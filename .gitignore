@@ -1,0 +1,4 @@
+.chrome-profile*
+.chrome-out.log
+.qa/
+out/

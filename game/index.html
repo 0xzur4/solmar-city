@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Solmar — An Open-World Crime Story</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #0a0a0a;
+      }
+      body {
+        font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        image-rendering: auto;
+      }
+      #status {
+        position: fixed;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        color: #f4ede1;
+        font-size: 14px;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game" aria-label="Solmar game view"></canvas>
+    <div id="status" aria-live="polite">Solmar. Press Enter or click to start.</div>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
