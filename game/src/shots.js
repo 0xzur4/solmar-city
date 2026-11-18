@@ -114,14 +114,15 @@ export function stageShot(name, world) {
       if (i === Math.floor(steps / 2)) clearRoute(w, 1300, 0, 3600, 150);
       return driveControls(w, 3100, 1300);
     });
-    // The police spawn 700 away and close in over time; put the first three behind
-    // the player so the chase reads in the frame.
+    // The police spawn 700 away and close in over time; put four of them in
+    // the frame — two tight behind the player, two closing in from ahead.
     const car = world.player.car;
-    world.policeCars.slice(0, 3).forEach((policeCar, i) => {
-      policeCar.x = car.x - 450 - i * 130;
-      policeCar.y = car.y + (i === 1 ? -55 : i === 2 ? 55 : 0);
-      policeCar.angle = 0;
-      policeCar.vx = 420;
+    world.policeCars.slice(0, 4).forEach((policeCar, i) => {
+      const ahead = i >= 2;
+      policeCar.x = car.x + (ahead ? 220 + (i - 2) * 110 : -280 - i * 130);
+      policeCar.y = car.y + (i === 1 ? -55 : i === 3 ? 55 : 0);
+      policeCar.angle = ahead ? Math.PI : 0;
+      policeCar.vx = ahead ? -420 : 420;
       policeCar.vy = 0;
     });
     return { screen: SCREEN_PLAY };

@@ -48,7 +48,7 @@ export const MISSIONS = [
     reward: 1200,
     steps: [
       { type: 'goto', text: 'Get to the marina warehouse', x: null, y: null, place: 'marina', radius: 90 },
-      { type: 'hold', text: 'Hold the warehouse — 20 seconds', seconds: 20, wanted: 3, place: 'marina' },
+      { type: 'hold', text: 'Hold the warehouse — 15 seconds', seconds: 15, wanted: 3, place: 'marina' },
       { type: 'goto', text: 'Escape to the garage', x: null, y: null, place: 'garage', radius: 90 },
     ],
   },

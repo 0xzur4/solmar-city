@@ -114,7 +114,7 @@ function stepPoliceCar(w, car, dt) {
       car.ramTimer = 0.5;
       player.car.vx += Math.cos(car.angle) * 260;
       player.car.vy += Math.sin(car.angle) * 260;
-      damageCar(w, player.car, 6);
+      damageCar(w, player.car, 2);
       w.effects.addShake(3);
     }
   }
