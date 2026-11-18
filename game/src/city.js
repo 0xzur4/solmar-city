@@ -1,9 +1,9 @@
 // city.js: The city of Solmar, generated once from a seed: avenues and streets on
 import { CITY, PALETTE, WORLD } from './config.js';
-import { districtFor, groundFor, heightFor, neonFor, DISTRICT_COMMERCIAL } from './districts.js';
+import { districtFor, groundFor, heightFor, DISTRICT_COMMERCIAL } from './districts.js';
 import { intRange, pick, range } from './random.js';
 
-/** Is the point on a road (including the sidewalk strip)? */
+
 export function onRoad(city, x, y) {
   for (const avenue of CITY.avenues) {
     if (Math.abs(x - avenue) <= CITY.roadWidth / 2 + CITY.sidewalk) return true;
@@ -14,7 +14,7 @@ export function onRoad(city, x, y) {
   return false;
 }
 
-/** Is the point on the drivable asphalt (not the sidewalk)? */
+
 export function onAsphalt(city, x, y) {
   for (const avenue of CITY.avenues) {
     if (Math.abs(x - avenue) <= CITY.roadWidth / 2) return true;
@@ -25,7 +25,7 @@ export function onAsphalt(city, x, y) {
   return false;
 }
 
-/** Is the point inside a building? Returns the building or null. */
+
 export function buildingAt(city, x, y) {
   for (const building of city.buildings) {
     if (x >= building.x && x <= building.x + building.w && y >= building.y && y <= building.y + building.h) {
@@ -35,7 +35,7 @@ export function buildingAt(city, x, y) {
   return null;
 }
 
-/** Push a circle (x, y, radius) out of every building it overlaps. Returns true if it moved. */
+
 export function resolveBuildingCollision(city, body) {
   let moved = false;
   for (const building of city.buildings) {
@@ -51,7 +51,7 @@ export function resolveBuildingCollision(city, body) {
       body.x = closestX + (dx / dist) * body.radius;
       body.y = closestY + (dy / dist) * body.radius;
     } else {
-      // Centre inside the building: push out along the smallest penetration axis.
+
       const left = body.x - building.x;
       const right = building.x + building.w - body.x;
       const top = body.y - building.y;
@@ -66,7 +66,7 @@ export function resolveBuildingCollision(city, body) {
   return moved;
 }
 
-/** Clamp a point inside the world, keeping it off the water. */
+
 export function clampToLand(city, x, y) {
   return {
     x: Math.max(20, Math.min(WORLD.width - 20, x)),
@@ -74,7 +74,7 @@ export function clampToLand(city, x, y) {
   };
 }
 
-/** A random point on a road centreline (for traffic and mission targets). */
+
 export function randomRoadPoint(random) {
   if (random() < 0.5) {
     return { x: pick(random, CITY.avenues), y: range(random, 120, CITY.beachY - 120) };
@@ -82,7 +82,7 @@ export function randomRoadPoint(random) {
   return { x: range(random, 120, WORLD.width - 120), y: pick(random, CITY.streets) };
 }
 
-/** A random point on a sidewalk (for pedestrians and on-foot targets). */
+
 export function randomSidewalkPoint(random) {
   const point = randomRoadPoint(random);
   const onAvenue = CITY.avenues.includes(point.x);
@@ -91,7 +91,7 @@ export function randomSidewalkPoint(random) {
   return point;
 }
 
-/** The nearest intersection (avenue, street) to a point. */
+
 export function nearestIntersection(x, y) {
   let bestAvenue = CITY.avenues[0];
   let bestStreet = CITY.streets[0];
@@ -115,7 +115,7 @@ function buildBlocks(random) {
   const blockGround = [];
   const avenues = CITY.avenues;
   const streets = CITY.streets;
-  // Blocks are the cells between neighbouring avenues and streets.
+
   for (let ai = 0; ai < avenues.length - 1; ai += 1) {
     for (let si = 0; si < streets.length - 1; si += 1) {
       const x0 = avenues[ai] + CITY.roadWidth / 2 + CITY.sidewalk + 8;
@@ -126,7 +126,7 @@ function buildBlocks(random) {
       const blockH = y1 - y0;
       const district = districtFor(ai, si);
       blockGround.push({ x: x0 - 8, y: y0 - 8, w: blockW + 16, h: blockH + 16, color: groundFor(district) });
-      // The park block stays green: no buildings, only trees.
+
       const isPark = ai === 3 && si === 2;
       if (isPark) {
         for (let t = 0; t < 14; t += 1) {
@@ -136,7 +136,7 @@ function buildBlocks(random) {
         benches.push({ x: x0 + blockW / 2 + 60, y: y0 + blockH / 2, angle: Math.PI });
         continue;
       }
-      // One or two buildings per block, with a yard gap between them.
+
       const split = blockW > 220 && random() < 0.6;
       const count = split ? 2 : 1;
       for (let b = 0; b < count; b += 1) {
@@ -153,14 +153,13 @@ function buildBlocks(random) {
           windows: intRange(random, 2, 5),
           district,
           height: heightFor(random, district),
-          neon: neonFor(random, district),
         };
         buildings.push(building);
         if (district === DISTRICT_COMMERCIAL && random() < 0.7) {
           awnings.push({ x: building.x, y: building.y + building.h - 4, w: building.w * 0.6, color: pick(random, PALETTE.awning) });
         }
       }
-      // A tree or two on the block's corners, and lamps along its roads.
+
       if (random() < 0.7) trees.push({ x: x0 + 14, y: y0 + 14, r: range(random, 10, 16) });
       if (random() < 0.5) trees.push({ x: x1 - 14, y: y1 - 14, r: range(random, 10, 16) });
       if (random() < 0.5) trees.push({ x: x0 + blockW / 2, y: y1 - 16, r: range(random, 9, 14) });
@@ -170,7 +169,7 @@ function buildBlocks(random) {
       lamps.push({ x: x1 + 4, y: y0 + blockH / 2 });
     }
   }
-  // Beach props: umbrellas and towels on the sand, piers and boats at the marina.
+
   const umbrellas = [];
   for (let i = 0; i < 14; i += 1) {
     umbrellas.push({
@@ -179,31 +178,17 @@ function buildBlocks(random) {
       color: pick(random, PALETTE.umbrella),
     });
   }
-  const piers = [];
-  for (const px of [CITY.avenues[3] + 120, CITY.avenues[4] - 60, CITY.avenues[4] + 140]) {
-    piers.push({ x: px, y: CITY.beachY + 40, w: 26, h: CITY.waterY - CITY.beachY + 120 });
-  }
-  const boats = [];
-  for (let i = 0; i < 6; i += 1) {
-    boats.push({
-      x: range(random, 400, WORLD.width - 400),
-      y: range(random, CITY.waterY + 30, WORLD.height - 60),
-      angle: range(random, -0.4, 0.4),
-      color: pick(random, PALETTE.boatHull),
-      bob: random() * Math.PI * 2,
-    });
-  }
-  return { buildings, trees, lamps, benches, hydrants, busStops, awnings, umbrellas, piers, boats, blockGround };
+  return { buildings, trees, lamps, benches, hydrants, busStops, awnings, umbrellas, blockGround };
 }
 
-/** Build the whole city from the seed. */
+
 export function createCity(random) {
   const blocks = buildBlocks(random);
   const city = {
     ...blocks,
     park: { x: CITY.avenues[3] + CITY.roadWidth / 2 + CITY.sidewalk, y: CITY.streets[2] + CITY.roadWidth / 2 + CITY.sidewalk, w: 400 - CITY.roadWidth - 2 * CITY.sidewalk, h: 350 - CITY.roadWidth - 2 * CITY.sidewalk },
     plaza: { x: CITY.avenues[4] + CITY.roadWidth / 2 + CITY.sidewalk, y: CITY.streets[1] + CITY.roadWidth / 2 + CITY.sidewalk, w: 400 - CITY.roadWidth - 2 * CITY.sidewalk, h: 350 - CITY.roadWidth - 2 * CITY.sidewalk },
-    // Named places the story uses, each on a road so cars and feet can reach them.
+
     hospital: { x: CITY.avenues[1], y: CITY.streets[1] + 90, label: 'Solmar General' },
     policeStation: { x: CITY.avenues[2], y: CITY.streets[2] - 90, label: 'Solmar PD' },
     garage: { x: CITY.avenues[6], y: CITY.streets[4] + 90, label: "Mara's Garage" },

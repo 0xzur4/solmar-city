@@ -36,7 +36,7 @@ export function createCar(model, x, y, angle, options = {}) {
   };
 }
 
-/** A point on the road graph: intersections are the nodes traffic drives between. */
+
 function randomNeighbour(random, node) {
   const neighbours = [];
   for (const avenue of CITY.avenues) {
@@ -49,7 +49,7 @@ function randomNeighbour(random, node) {
 }
 
 function lanePoint(from, to) {
-  // Right-hand traffic: drive offset to the right of the travel direction.
+
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const length = Math.hypot(dx, dy) || 1;
@@ -89,7 +89,7 @@ export function spawnParkedCars(city, random, count) {
   return cars;
 }
 
-/** The nearest car to a point, within range, passing a filter. */
+
 export function nearestCar(cars, x, y, maxRange, filter) {
   let best = null;
   let bestDist = maxRange;
@@ -112,7 +112,7 @@ function angleDifference(a, b) {
   return diff;
 }
 
-/** One traffic car: steer toward its target intersection, slow for the car ahead. */
+
 function stepTrafficCar(w, car, dt) {
   if (car.wrecked) return;
   if (!car.target) car.target = randomNeighbour(w.random, nearestIntersection(car.x, car.y));
@@ -125,7 +125,7 @@ function stepTrafficCar(w, car, dt) {
   const wantAngle = Math.atan2(goal.y - car.y, goal.x - car.x);
   const turn = angleDifference(car.angle, wantAngle);
   car.angle += Math.max(-2.4 * dt, Math.min(2.4 * dt, turn));
-  // Slow down if another car is close ahead.
+
   let targetSpeed = car.cruise;
   const aheadX = car.x + Math.cos(car.angle) * 70;
   const aheadY = car.y + Math.sin(car.angle) * 70;
@@ -136,7 +136,7 @@ function stepTrafficCar(w, car, dt) {
       break;
     }
   }
-  // And if a pedestrian is right in front, stop.
+
   for (const ped of w.peds) {
     if (Math.hypot(ped.x - aheadX, ped.y - aheadY) < 30) {
       targetSpeed = 0;
@@ -149,12 +149,12 @@ function stepTrafficCar(w, car, dt) {
   car.y += Math.sin(car.angle) * car.speed * dt;
   car.vx = Math.cos(car.angle) * car.speed;
   car.vy = Math.sin(car.angle) * car.speed;
-  // Off the road (pushed by a collision): steer back toward the nearest intersection.
+
   if (!onAsphalt(w.city, car.x, car.y)) {
     const node = nearestIntersection(car.x, car.y);
     car.target = node;
   }
-  // Stuck against something: pick a new target.
+
   if (Math.hypot(car.x - car.lastX, car.y - car.lastY) < 4 && car.speed > 40) car.stuckTimer += dt;
   else car.stuckTimer = 0;
   car.lastX = car.x;
@@ -165,24 +165,26 @@ function stepTrafficCar(w, car, dt) {
   }
 }
 
-/** The car the player drives: arcade physics with drift and handbrake. */
+
 export function stepPlayerCar(w, car, controls, dt) {
   const spec = car.spec;
   const forward = Math.cos(car.angle);
   const right = Math.sin(car.angle);
   const forwardSpeed = car.vx * forward + car.vy * right;
   const move = controls.move;
-  // Forward/back along the car's heading; W/S (or up/down) is the throttle.
+
   const throttle = -move.y;
-  if (throttle > 0) car.speed += spec.accel * throttle * dt;
+  if (car.boost > 0) car.boost -= dt;
+  const boosting = car.boost > 0;
+  if (throttle > 0) car.speed += spec.accel * (boosting ? 2.6 : 1) * throttle * dt;
   else if (throttle < 0) car.speed -= (forwardSpeed > 10 ? spec.brake : spec.reverse) * dt;
   else car.speed -= Math.sign(car.speed) * Math.min(Math.abs(car.speed), 160 * dt);
-  car.speed = Math.max(-spec.reverse, Math.min(spec.maxSpeed, car.speed));
-  // Steering: stronger at speed, reversed when reversing.
+  car.speed = Math.max(-spec.reverse, Math.min(spec.maxSpeed * (boosting ? 1.4 : 1), car.speed));
+
   const steer = move.x;
   const steerFactor = Math.min(1, Math.abs(forwardSpeed) / 120);
   car.angle += steer * spec.turn * steerFactor * Math.sign(forwardSpeed || 1) * dt;
-  // Velocity follows the heading, with grip: low grip (handbrake) keeps sliding.
+
   const handbrake = controls.handbrake;
   const grip = handbrake ? 0.86 : spec.grip;
   const targetVx = Math.cos(car.angle) * car.speed;
@@ -192,8 +194,7 @@ export function stepPlayerCar(w, car, controls, dt) {
   car.x += car.vx * dt;
   car.y += car.vy * dt;
   car.brakeLight = throttle < 0;
-  if (throttle > 0 && Math.random() < 0.3) w.effects.smoke(car.x - forward * spec.length * 0.5, car.y - right * spec.length * 0.5);
-  // Skid marks and smoke while sliding sideways.
+
   const lateral = Math.abs(car.vx * Math.sin(car.angle) - car.vy * Math.cos(car.angle));
   if ((handbrake && Math.abs(car.speed) > 120) || lateral > 170) {
     const backX = car.x - Math.cos(car.angle) * spec.length * 0.32;
@@ -217,13 +218,10 @@ export function stepPlayerCar(w, car, controls, dt) {
       w.effects.smoke(car.x + Math.cos(car.angle) * spec.length * 0.3, car.y + Math.sin(car.angle) * spec.length * 0.3);
     }
   }
-  // Off-road at speed kicks up dust behind the car.
-  if (!onAsphalt(w.city, car.x, car.y) && Math.abs(car.speed) > 200 && w.random() < 0.35) {
-    w.effects.dust(car.x - Math.cos(car.angle) * spec.length * 0.4, car.y - Math.sin(car.angle) * spec.length * 0.4);
-  }
+
 }
 
-/** Damage a car; a wrecked car stops, smokes and — for a hard kill — explodes. Returns true if it just wrecked. */
+
 export function damageCar(w, car, amount) {
   if (car.wrecked) return false;
   car.health -= amount;
@@ -240,7 +238,7 @@ export function damageCar(w, car, amount) {
   return false;
 }
 
-/** Car vs car and car vs building collisions for every car. */
+
 export function collideCars(w, dt) {
   const cars = w.cars;
   for (const car of cars) {
@@ -261,7 +259,7 @@ export function collideCars(w, dt) {
         }
       }
     }
-    // Keep cars inside the world.
+
     car.x = Math.max(30, Math.min(WORLD.width - 30, car.x));
     car.y = Math.max(30, Math.min(2460 - 30, car.y));
   }
@@ -293,7 +291,7 @@ export function collideCars(w, dt) {
           w.player.lastDamage = w.time;
         }
       }
-      // Exchange a little velocity so they do not stick together.
+
       const aSpeed = a.speed;
       a.speed = b.speed * 0.5;
       b.speed = aSpeed * 0.5;
@@ -305,7 +303,7 @@ export function collideCars(w, dt) {
   }
 }
 
-/** Step every traffic car. */
+
 export function stepTraffic(w, dt) {
   for (const car of w.cars) {
     if (car.traffic && !car.wrecked) stepTrafficCar(w, car, dt);

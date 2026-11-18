@@ -2,7 +2,8 @@
 
 const MAX_PARTICLES = 240;
 const MAX_SKIDS = 400;
-const MAX_FLOATERS = 24;
+const MAX_FLOATERS = 40;
+const MAX_RINGS = 10;
 
 export function createEffects() {
   const particles = [];
@@ -16,6 +17,10 @@ export function createEffects() {
   const floaters = [];
   for (let i = 0; i < MAX_FLOATERS; i += 1) {
     floaters.push({ active: false, x: 0, y: 0, life: 0, text: '', color: '#ffffff' });
+  }
+  const rings = [];
+  for (let i = 0; i < MAX_RINGS; i += 1) {
+    rings.push({ active: false, x: 0, y: 0, radius: 0, life: 0, maxLife: 1, color: '#ffffff' });
   }
   let skidCursor = 0;
   let shake = 0;
@@ -44,7 +49,7 @@ export function createEffects() {
   }
 
   return {
-    /** Screen shake strength in world units; decays on its own. */
+
     get shake() {
       return shake;
     },
@@ -54,7 +59,7 @@ export function createEffects() {
     smoke(x, y) {
       burst(x, y, 2, '#9a9a9a', 40, 5, 0.7);
     },
-    /** A wreck's fireball: sparks, smoke and a shockwave of shake. */
+
     explosion(x, y) {
       burst(x, y, 22, '#ff9a3c', 320, 6, 0.7);
       burst(x, y, 12, '#ffd23f', 220, 4, 0.4);
@@ -63,9 +68,6 @@ export function createEffects() {
     },
     sparks(x, y) {
       burst(x, y, 10, '#ffd23f', 260, 3, 0.4);
-    },
-    dust(x, y) {
-      burst(x, y, 3, '#cbb98a', 60, 6, 0.9);
     },
     muzzle(x, y) {
       burst(x, y, 5, '#ffe08a', 200, 3, 0.12);
@@ -82,6 +84,24 @@ export function createEffects() {
       skid.x2 = x2;
       skid.y2 = y2;
       skid.life = 6;
+    },
+
+    addRing(x, y, color, radius, life) {
+      for (const ring of rings) {
+        if (ring.active) continue;
+        ring.active = true;
+        ring.x = x;
+        ring.y = y;
+        ring.radius = radius;
+        ring.life = life;
+        ring.maxLife = life;
+        ring.color = color;
+        return;
+      }
+    },
+
+    shell(x, y) {
+      burst(x, y, 1, '#e0b030', 90, 2.2, 0.55);
     },
     addFloater(x, y, text, color) {
       for (const floater of floaters) {
@@ -114,6 +134,11 @@ export function createEffects() {
         skid.life -= dt;
         if (skid.life <= 0) skid.active = false;
       }
+      for (const ring of rings) {
+        if (!ring.active) continue;
+        ring.life -= dt;
+        if (ring.life <= 0) ring.active = false;
+      }
       for (const floater of floaters) {
         if (!floater.active) continue;
         floater.life -= dt;
@@ -126,6 +151,9 @@ export function createEffects() {
     },
     forEachSkid(callback) {
       for (const skid of skids) if (skid.active) callback(skid);
+    },
+    forEachRing(callback) {
+      for (const ring of rings) if (ring.active) callback(ring);
     },
     forEachFloater(callback) {
       for (const floater of floaters) if (floater.active) callback(floater);

@@ -1,8 +1,7 @@
 // police.js: The wanted level and the Solmar PD. Heat rises when the player commits
 import { WANTED } from './config.js';
 import { createCar, damageCar } from './vehicles.js';
-import { clampToLand, nearestIntersection } from './city.js';
-import { heliSpotOnPlayer, stepHeli } from './helicopter.js';
+import { clampToLand } from './city.js';
 import { playSirenTick } from './audio.js';
 
 function starsForHeat(heat) {
@@ -13,7 +12,7 @@ function starsForHeat(heat) {
   return stars;
 }
 
-/** Add heat for a crime. Witnesses nearby make it count double. */
+
 export function addHeat(w, amount, x, y) {
   let witnessed = false;
   for (const ped of w.peds) {
@@ -38,7 +37,7 @@ export function clearWanted(w) {
   w.wanted.stars = 0;
 }
 
-/** Pick a spawn point on a road near the player but off the visible screen. */
+
 function spawnPointNear(w, distance) {
   const player = w.player;
   for (let tries = 0; tries < 12; tries += 1) {
@@ -86,12 +85,12 @@ function stepPoliceCar(w, car, dt) {
   const targetX = player.car ? player.car.x : player.x;
   const targetY = player.car ? player.car.y : player.y;
   const dist = Math.hypot(targetX - car.x, targetY - car.y);
-  // Give up if the player got far away.
+
   if (dist > WANTED.despawnRange) {
     car.despawn = true;
     return;
   }
-  // Pursuit steering: aim slightly ahead of the player.
+
   const lead = 0.45;
   const aimX = targetX + (player.car ? player.car.vx * lead : player.vx * lead);
   const aimY = targetY + (player.car ? player.car.vy * lead : player.vy * lead);
@@ -106,7 +105,7 @@ function stepPoliceCar(w, car, dt) {
   car.y += Math.sin(car.angle) * car.speed * dt;
   car.vx = Math.cos(car.angle) * car.speed;
   car.vy = Math.sin(car.angle) * car.speed;
-  // Ram the player's car: a hard shove and a little damage, at most twice a second.
+
   if (player.car && !player.car.wrecked) {
     const d = Math.hypot(player.car.x - car.x, player.car.y - car.y);
     car.ramTimer = Math.max(0, (car.ramTimer ?? 0) - dt);
@@ -118,7 +117,7 @@ function stepPoliceCar(w, car, dt) {
       w.effects.addShake(3);
     }
   }
-  // Run the player down on foot.
+
   if (!player.car) {
     const d = Math.hypot(player.x - car.x, player.y - car.y);
     if (d < 40) {
@@ -132,14 +131,13 @@ function stepPoliceCar(w, car, dt) {
 }
 
 function stepFootPolice(w, cop, dt) {
-  if (cop.flash > 0) cop.flash -= dt;
   const player = w.player;
   const dist = Math.hypot(player.x - cop.x, player.y - cop.y);
   if (dist > WANTED.despawnRange) {
     cop.despawn = true;
     return;
   }
-  // A roadblock cop holds their post until the player gets close.
+
   if (cop.post && dist > 260) {
     cop.walkPhase += dt * 2;
     return;
@@ -149,7 +147,7 @@ function stepFootPolice(w, cop, dt) {
   cop.x += Math.cos(cop.angle) * speed * dt;
   cop.y += Math.sin(cop.angle) * speed * dt;
   cop.walkPhase += dt * 10;
-  // Arrest: hold the player on foot for a second.
+
   if (!player.car && dist < 30) {
     cop.arrestTimer += dt;
     if (cop.arrestTimer > 1.1) w.busted = true;
@@ -158,54 +156,18 @@ function stepFootPolice(w, cop, dt) {
   }
 }
 
-/** Block a road ahead of the player: two cruisers across it and two cops on foot. */
-function spawnRoadblock(w) {
-  const player = w.player;
-  const dirX = player.car ? player.car.vx : Math.cos(player.angle) * 100;
-  const dirY = player.car ? player.car.vy : Math.sin(player.angle) * 100;
-  const len = Math.hypot(dirX, dirY) || 1;
-  const node = nearestIntersection(player.x + (dirX / len) * 420, player.y + (dirY / len) * 420);
-  const cars = [];
-  for (const offset of [-38, 38]) {
-    const car = createCar('police', node.x, node.y + offset, Math.PI / 2, { police: true, parked: true });
-    w.cars.push(car);
-    cars.push(car);
-  }
-  const cops = [];
-  for (const offset of [-70, 70]) {
-    const cop = {
-      x: node.x + 34, y: node.y + offset, angle: Math.PI, speed: 0, radius: 14, hp: 60,
-      isCop: true, arrestTimer: 0, walkPhase: 0, post: { x: node.x + 34, y: node.y + offset },
-    };
-    w.footPolice.push(cop);
-    cops.push(cop);
-  }
-  w.roadblock = { x: node.x, y: node.y, cars, cops };
-}
-
-/** Take a roadblock off the street. */
-export function clearRoadblock(w) {
-  if (!w.roadblock) return;
-  for (const car of w.roadblock.cars) car.despawn = true;
-  for (const cop of w.roadblock.cops) cop.despawn = true;
-  w.roadblock = null;
-  w.roadblockCooldown = 25;
-}
 
 export function stepPolice(w, dt) {
   const stars = w.wanted.stars;
-  // Heat decays when the player stays clean and no police are near — never while the
-  // helicopter's spotlight is on them, and three times faster when hiding at the safehouse.
-  if (stars > 0 && w.time - w.wanted.lastCrime > WANTED.decayDelay && !heliSpotOnPlayer(w)) {
+
+
+  if (stars > 0 && w.time - w.wanted.lastCrime > WANTED.decayDelay) {
     let policeNear = false;
     for (const car of w.policeCars) {
       if (Math.hypot(car.x - w.player.x, car.y - w.player.y) < 420) {
         policeNear = true;
         break;
       }
-    }
-    if (!policeNear && w.roadblock && Math.hypot(w.roadblock.x - w.player.x, w.roadblock.y - w.player.y) < 420) {
-      policeNear = true;
     }
     if (!policeNear) {
       const hiding = Math.hypot(w.city.safehouse.x - w.player.x, w.city.safehouse.y - w.player.y) < 220;
@@ -214,7 +176,7 @@ export function stepPolice(w, dt) {
       w.wanted.stars = starsForHeat(w.wanted.heat);
     }
   }
-  // Spawn to match the wanted level.
+
   const wantCars = WANTED.policeCars[stars];
   const wantFoot = WANTED.footPolice[stars];
   if (w.policeCars.length < wantCars && w.time - w.lastPoliceSpawn > 1.2) {
@@ -225,7 +187,7 @@ export function stepPolice(w, dt) {
     spawnFootPolice(w);
     w.lastPoliceSpawn = w.time;
   }
-  // Despawn the extras when the heat drops.
+
   while (w.policeCars.length > wantCars) {
     const car = w.policeCars.pop();
     car.despawn = true;
@@ -236,20 +198,11 @@ export function stepPolice(w, dt) {
   }
   for (const car of w.policeCars) stepPoliceCar(w, car, dt);
   for (const cop of w.footPolice) stepFootPolice(w, cop, dt);
-  // Roadblocks: at 3 stars the PD blocks a road ahead of the player.
-  w.roadblockCooldown = (w.roadblockCooldown ?? 0) - dt;
-  if (stars >= WANTED.roadblockAtStars && !w.roadblock && w.roadblockCooldown <= 0) {
-    spawnRoadblock(w);
-  } else if (w.roadblock && (stars < WANTED.roadblockAtStars || Math.hypot(w.player.x - w.roadblock.x, w.player.y - w.roadblock.y) > 1300)) {
-    clearRoadblock(w);
-  }
-  // The helicopter circles at 4 stars and up.
-  stepHeli(w, dt);
-  // Remove despawned police cars from the car list too.
+
   w.cars = w.cars.filter((car) => !car.despawn);
   w.policeCars = w.policeCars.filter((car) => !car.despawn);
   w.footPolice = w.footPolice.filter((cop) => !cop.despawn);
-  // Siren wail while police are close.
+
   if (w.policeCars.length > 0) {
     w.sirenTimer -= dt;
     if (w.sirenTimer <= 0) {

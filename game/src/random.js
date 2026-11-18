@@ -10,17 +10,17 @@ export function createRandom(seed) {
   };
 }
 
-/** Pick one element of an array with the seeded random. */
+
 export function pick(random, array) {
   return array[Math.floor(random() * array.length)];
 }
 
-/** A number between min and max, inclusive of min, exclusive of max. */
+
 export function range(random, min, max) {
   return min + random() * (max - min);
 }
 
-/** A whole number between min and max, inclusive. */
+
 export function intRange(random, min, max) {
   return min + Math.floor(random() * (max - min + 1));
 }

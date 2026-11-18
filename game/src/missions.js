@@ -7,73 +7,73 @@ import { playMissionDone } from './audio.js';
 export const MISSIONS = [
   {
     name: 'First Fare',
-    intro: 'Mara Voss needs a driver she can trust. Meet her at the garage, then run a pickup at the marina.',
+    intro: 'Mara Voss needs a driver. Meet her at the garage, then pick up at the marina.',
     reward: 250,
     steps: [
-      { type: 'goto', text: 'Meet Mara at the garage', x: null, y: null, place: 'garage', radius: 90 },
-      { type: 'goto', text: 'Drive to the marina pickup', x: null, y: null, place: 'marina', radius: 90 },
+      { type: 'goto', text: 'Meet Mara at the garage', place: 'garage', radius: 90 },
+      { type: 'goto', text: 'Drive to the marina pickup', place: 'marina', radius: 90 },
     ],
   },
   {
     name: 'Hot Wheels',
-    intro: 'A Comet GT is sitting at Costa Motors. Take it — quietly if you can — and bring it to the garage.',
+    intro: 'A Comet GT sits at Costa Motors. Take it quietly and bring it to the garage.',
     reward: 500,
     steps: [
-      { type: 'steal', text: 'Steal the Comet GT at Costa Motors', x: null, y: null, place: 'dealership', radius: 70 },
-      { type: 'deliver', text: 'Deliver the Comet GT to the garage', x: null, y: null, place: 'garage', radius: 90 },
+      { type: 'steal', text: 'Steal the Comet GT at Costa Motors', place: 'dealership', radius: 70 },
+      { type: 'deliver', text: 'Deliver the Comet GT to the garage', place: 'garage', radius: 90 },
     ],
   },
   {
     name: 'The Drop',
-    intro: 'A package for the park contact. The PD is watching — they will come for you. Stay on foot, stay calm.',
+    intro: 'A package for the park contact. Get it there unseen — if the PD spots you, the deal is off.',
     reward: 600,
     steps: [
-      { type: 'goto', text: 'Deliver the package to the park contact', x: null, y: null, place: 'park', radius: 80, wanted: 2 },
-      { type: 'goto', text: 'Lose the heat — reach the safehouse', x: null, y: null, place: 'safehouse', radius: 90 },
+      { type: 'stealth', text: 'Deliver the package unseen — stay clean', place: 'park', radius: 80 },
+      { type: 'goto', text: 'Lose the heat — reach the safehouse', place: 'safehouse', radius: 90 },
     ],
   },
   {
     name: 'Getaway',
-    intro: 'Pick up the crew at the bank. The alarm is already ringing — get them out and lose the cops.',
+    intro: 'Pick up the crew at the bank. The alarm is ringing — get them out and lose the cops.',
     reward: 800,
     steps: [
-      { type: 'goto', text: 'Pick up the crew at the bank', x: null, y: null, place: 'bank', radius: 80 },
+      { type: 'goto', text: 'Pick up the crew at the bank', place: 'bank', radius: 80 },
       { type: 'survive', text: 'Survive the chase — 25 seconds', seconds: 25, wanted: 3 },
-      { type: 'goto', text: 'Reach the safehouse', x: null, y: null, place: 'safehouse', radius: 90 },
+      { type: 'goto', text: 'Reach the safehouse', place: 'safehouse', radius: 90 },
     ],
   },
   {
     name: 'The Marina Job',
-    intro: 'Hold the marina warehouse while the crew works. The PD will send everything they have.',
+    intro: 'Hold the marina warehouse while the crew works. The PD is coming.',
     reward: 1200,
     steps: [
-      { type: 'goto', text: 'Get to the marina warehouse', x: null, y: null, place: 'marina', radius: 90 },
+      { type: 'goto', text: 'Get to the marina warehouse', place: 'marina', radius: 90 },
       { type: 'hold', text: 'Hold the warehouse — 15 seconds', seconds: 15, wanted: 3, place: 'marina' },
-      { type: 'goto', text: 'Escape to the garage', x: null, y: null, place: 'garage', radius: 90 },
+      { type: 'goto', text: 'Escape to the garage', place: 'garage', radius: 90 },
     ],
   },
   {
     name: 'The Informant',
-    intro: 'A nervous informant waits at the plaza with names for Mara. Bring him to the safehouse — the PD wants him too.',
+    intro: 'An informant waits at the plaza with names for Mara. Get him to the safehouse — the PD wants him too.',
     reward: 900,
     steps: [
-      { type: 'goto', text: 'Pick up the informant at the plaza', x: null, y: null, place: 'plaza', radius: 80 },
-      { type: 'goto', text: 'Get him to the safehouse', x: null, y: null, place: 'safehouse', radius: 90, wanted: 2 },
+      { type: 'goto', text: 'Pick up the informant at the plaza', place: 'plaza', radius: 80 },
+      { type: 'timed', text: 'Get him to the safehouse — 60 seconds', place: 'safehouse', radius: 90, seconds: 60, wanted: 2 },
     ],
   },
   {
     name: 'Bank Run',
-    intro: 'The crew is inside the bank. Hold the doors while they empty the vault, then run for the marina.',
+    intro: 'The crew is inside the bank. Hold the doors while they empty the vault, then run.',
     reward: 1500,
     steps: [
-      { type: 'goto', text: 'Get to the bank', x: null, y: null, place: 'bank', radius: 80 },
+      { type: 'goto', text: 'Get to the bank', place: 'bank', radius: 80 },
       { type: 'hold', text: 'Hold the bank doors — 15 seconds', seconds: 15, wanted: 3, place: 'bank' },
-      { type: 'goto', text: 'Escape to the marina', x: null, y: null, place: 'marina', radius: 90 },
+      { type: 'goto', text: 'Escape to the marina', place: 'marina', radius: 90 },
     ],
   },
   {
     name: 'The Racer',
-    intro: 'A midnight street race across Solmar: dealership, bank, plaza, marina. Beat the clock and the purse is yours.',
+    intro: 'A midnight street race: dealership, bank, plaza, marina. Beat the clock.',
     reward: 1400,
     steps: [
       { type: 'race', text: 'Race the checkpoints — beat the clock', seconds: 80, checkpoints: [
@@ -86,46 +86,39 @@ export const MISSIONS = [
   },
   {
     name: 'The Convoy',
-    intro: 'Vince Kroll moves his money in an armoured truck. Run it off the road and bring the cash to Mara.',
+    intro: 'Vince Kroll moves his money in an armoured truck. Run it off the road, bring the cash to Mara.',
     reward: 1800,
     steps: [
-      { type: 'chase', text: 'Disable the armoured truck', x: null, y: null, place: 'streets', radius: 0, model: 'truck' },
-      { type: 'goto', text: 'Bring the cash to Mara at the garage', x: null, y: null, place: 'garage', radius: 90 },
+      { type: 'chase', text: 'Disable the armoured truck', place: 'streets', radius: 0, model: 'truck' },
+      { type: 'goto', text: 'Bring the cash to Mara at the garage', place: 'garage', radius: 90 },
     ],
   },
   {
     name: 'Payback',
-    intro: 'Two of Vince’s muscle cars are cruising the beach road, looking for you. Wreck them both.',
+    intro: 'Two of Vince’s muscle cars cruise the beach road. Wreck them both.',
     reward: 1700,
     steps: [
-      { type: 'destroy', text: 'Wreck both muscle cars', x: null, y: null, place: 'streets', radius: 0, model: 'muscle', count: 2 },
-      { type: 'goto', text: 'Report back to Mara at the garage', x: null, y: null, place: 'garage', radius: 90 },
+      { type: 'destroy', text: 'Wreck both muscle cars', place: 'streets', radius: 0, model: 'muscle', count: 2 },
+      { type: 'goto', text: 'Report back to Mara at the garage', place: 'garage', radius: 90 },
     ],
   },
   {
     name: 'King of Solmar',
-    intro: 'Vince Kroll is running with the take. Run his car off the road, then bring the money home to Mara.',
+    intro: 'Vince Kroll is running with the take. Run his car off the road and bring it home.',
     reward: 2000,
     steps: [
-      { type: 'chase', text: 'Disable Vince Kroll’s car', x: null, y: null, place: 'streets', radius: 0 },
-      { type: 'goto', text: 'Bring the take to Mara at the garage', x: null, y: null, place: 'garage', radius: 90 },
+      { type: 'chase', text: 'Disable Vince Kroll’s car', place: 'streets', radius: 0 },
+      { type: 'goto', text: 'Bring the take to Mara at the garage', place: 'garage', radius: 90 },
     ],
   },
 ];
 
 /** Resolve a step's named place to a world point. */
 export function placePoint(city, place) {
-  if (place === 'garage') return { x: city.garage.x, y: city.garage.y };
-  if (place === 'marina') return { x: city.marina.x, y: city.marina.y };
-  if (place === 'dealership') return { x: city.dealership.x, y: city.dealership.y };
   if (place === 'park') return { x: city.park.x + city.park.w / 2, y: city.park.y + city.park.h / 2 };
   if (place === 'plaza') return { x: city.plaza.x + city.plaza.w / 2, y: city.plaza.y + city.plaza.h / 2 };
-  if (place === 'pier') return { x: city.pier.x, y: city.pier.y };
-  if (place === 'safehouse') return { x: city.safehouse.x, y: city.safehouse.y };
-  if (place === 'bank') return { x: city.bank.x, y: city.bank.y };
-  if (place === 'hospital') return { x: city.hospital.x, y: city.hospital.y };
-  if (place === 'policeStation') return { x: city.policeStation.x, y: city.policeStation.y };
-  return { x: city.spawn.x, y: city.spawn.y };
+  const at = city[place];
+  return at !== undefined ? { x: at.x, y: at.y } : { x: city.spawn.x, y: city.spawn.y };
 }
 
 export function createMissionState() {
@@ -186,7 +179,7 @@ function startStep(w, step) {
   state.timer = 0;
   state.checkpoint = 0;
   if (step.wanted !== undefined) {
-    // The job starts hot: set the wanted level straight to the named stars.
+
     const thresholds = [15, 35, 55, 75, 90];
     w.wanted.heat = thresholds[step.wanted - 1] + 5;
     w.wanted.stars = step.wanted;
@@ -233,7 +226,7 @@ function finishStep(w) {
   state.targets = [];
   const mission = currentMission(state);
   if (mission !== null && state.step >= mission.steps.length) {
-    // Mission complete: pay out and move to the next job.
+
     w.player.money += mission.reward;
     w.stats.earned += mission.reward;
     w.effects.addFloater(w.player.x, w.player.y - 30, `+$${mission.reward}`, '#ffd23f');
@@ -279,6 +272,29 @@ export function updateMissions(w, dt) {
       finishStep(w);
       return true;
     }
+  } else if (step.type === 'timed') {
+    state.timer += dt;
+    if (state.timer >= step.seconds) {
+      w.message = { text: 'Too slow — the job is blown. Try again.', timer: 4 };
+      restartMission(w);
+      return false;
+    }
+    const point = placePoint(w.city, step.place);
+    if (Math.hypot(point.x - pos.x, point.y - pos.y) < step.radius) {
+      finishStep(w);
+      return true;
+    }
+  } else if (step.type === 'stealth') {
+    if (w.wanted.stars > 0) {
+      w.message = { text: 'Spotted — the deal is off. Try again.', timer: 4 };
+      restartMission(w);
+      return false;
+    }
+    const point = placePoint(w.city, step.place);
+    if (Math.hypot(point.x - pos.x, point.y - pos.y) < step.radius) {
+      finishStep(w);
+      return true;
+    }
   } else if (step.type === 'steal') {
     const car = state.targetCar;
     if (car !== null && w.player.car === car) {
@@ -303,7 +319,7 @@ export function updateMissions(w, dt) {
   } else if (step.type === 'race') {
     state.timer += dt;
     if (state.timer >= step.seconds) {
-      // Too slow: the race is lost and the mission restarts.
+
       w.message = { text: 'Too slow — the race is lost. Try again.', timer: 4 };
       restartMission(w);
       return false;
@@ -326,7 +342,7 @@ export function updateMissions(w, dt) {
       finishStep(w);
       return true;
     }
-    // Ramming a target hard damages it, like the chase step.
+
     if (w.player.car !== null) {
       for (const car of live) {
         const d = Math.hypot(car.x - w.player.car.x, car.y - w.player.car.y);
@@ -338,13 +354,13 @@ export function updateMissions(w, dt) {
   } else if (step.type === 'chase') {
     const car = state.targetCar;
     if (car !== null) {
-      // The rival flees: keep his cruise high and his route random.
+
       car.cruise = car.model === 'truck' ? 300 : 430;
       if (car.wrecked || car.health <= 25) {
         finishStep(w);
         return true;
       }
-      // If the player rams him hard, he takes damage too.
+
       if (w.player.car !== null) {
         const d = Math.hypot(car.x - w.player.car.x, car.y - w.player.car.y);
         if (d < 70 && Math.hypot(w.player.car.vx, w.player.car.vy) > 300) {
@@ -363,7 +379,7 @@ export function updateMissions(w, dt) {
 /** Restart the current mission from its first step (after a bust or a waste). */
 export function restartMission(w) {
   const state = w.missions;
-  // Take the old target cars off the street so restarts do not pile them up.
+
   if (state.targetCar !== null && w.player.car !== state.targetCar) {
     w.cars = w.cars.filter((car) => car !== state.targetCar);
   }

@@ -1,5 +1,5 @@
 // input.js: Keyboard and pointer input. Held keys give a movement vector; one-shot
-
+// presses are collected as ACTION_* flags and taken once per frame.
 export const ACTION_CONFIRM = 1;
 export const ACTION_PAUSE = 2;
 export const ACTION_ENTER = 4;
@@ -7,6 +7,11 @@ export const ACTION_PUNCH = 8;
 export const ACTION_MUTE = 16;
 export const ACTION_SHOOT = 32;
 export const ACTION_REPAIR = 64;
+export const ACTION_SKILL = 128;
+export const ACTION_WEAPON_NEXT = 256;
+export const ACTION_WEAPON_PREV = 512;
+export const ACTION_SLOT_BASE = 1024;
+export const ACTION_FIST = 16384;
 
 const UP = new Set(['ArrowUp', 'KeyW']);
 const DOWN = new Set(['ArrowDown', 'KeyS']);
@@ -18,6 +23,10 @@ const ENTER = new Set(['KeyE']);
 const PUNCH = new Set(['KeyF']);
 const REPAIR = new Set(['KeyG']);
 const MUTE = new Set(['KeyM']);
+const SKILL = new Set(['KeyQ']);
+const NEXT = new Set(['KeyX']);
+const FIST = new Set(['KeyV']);
+const SLOTS = ['Digit1', 'Digit2', 'Digit3', 'Digit4'];
 const RUN = new Set(['ShiftLeft', 'ShiftRight']);
 
 export function createInput(canvas) {
@@ -33,8 +42,7 @@ export function createInput(canvas) {
   let spaceHeld = false;
 
   function press(event, set) {
-    if (set.has(event.code)) return true;
-    return false;
+    return set.has(event.code);
   }
 
   window.addEventListener('keydown', (event) => {
@@ -56,6 +64,14 @@ export function createInput(canvas) {
       if (!event.repeat) actions |= ACTION_REPAIR;
     } else if (press(event, MUTE)) {
       if (!event.repeat) actions |= ACTION_MUTE;
+    } else if (press(event, SKILL)) {
+      if (!event.repeat) actions |= ACTION_SKILL;
+    } else if (press(event, NEXT)) {
+      if (!event.repeat) actions |= ACTION_WEAPON_NEXT;
+    } else if (press(event, FIST)) {
+      if (!event.repeat) actions |= ACTION_FIST;
+    } else if (SLOTS.includes(event.code)) {
+      if (!event.repeat) actions |= ACTION_SLOT_BASE << SLOTS.indexOf(event.code);
     } else return;
     event.preventDefault();
   });
@@ -67,7 +83,7 @@ export function createInput(canvas) {
     else if (press(event, RUN)) run = false;
     else if (press(event, CONFIRM)) spaceHeld = false;
   });
-  // A key released while the tab is hidden never sends keyup: let go of everything on blur.
+
   window.addEventListener('blur', () => {
     up = false;
     down = false;
@@ -85,6 +101,10 @@ export function createInput(canvas) {
   canvas.addEventListener('pointerup', () => {
     mouseDown = false;
   });
+  canvas.addEventListener('wheel', (event) => {
+    event.preventDefault();
+    actions |= event.deltaY > 0 ? ACTION_WEAPON_NEXT : ACTION_WEAPON_PREV;
+  }, { passive: false });
   canvas.addEventListener('pointermove', (event) => {
     const rect = canvas.getBoundingClientRect();
     mouseX = event.clientX - rect.left;
@@ -92,7 +112,6 @@ export function createInput(canvas) {
   });
 
   return {
-    /** Movement vector, normalised: x and y each in -1..1. */
     move() {
       const x = (right ? 1 : 0) - (left ? 1 : 0);
       const y = (down ? 1 : 0) - (up ? 1 : 0);
@@ -103,14 +122,15 @@ export function createInput(canvas) {
     running() {
       return run;
     },
-    /** Space held: the handbrake while driving. */
     handbrake() {
       return spaceHeld;
     },
     mouse() {
       return { x: mouseX, y: mouseY, down: mouseDown };
     },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
+    firing() {
+      return mouseDown;
+    },
     takeActions() {
       const taken = actions;
       actions = 0;

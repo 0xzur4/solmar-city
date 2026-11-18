@@ -3,10 +3,11 @@
 let context = null;
 let master = null;
 let muted = false;
-let engineNodes = null;
 
+let unlocked = false;
 function ensureContext() {
   if (context !== null) return context;
+  if (!unlocked) return null;
   const AudioContext = window.AudioContext || window.webkitAudioContext;
   if (!AudioContext) return null;
   context = new AudioContext();
@@ -16,8 +17,9 @@ function ensureContext() {
   return context;
 }
 
-/** Call from a user gesture (start button, key press) so the browser allows sound. */
+
 export function unlockAudio() {
+  unlocked = true;
   const ctx = ensureContext();
   if (ctx !== null && ctx.state === 'suspended') ctx.resume().catch(() => {});
 }
@@ -71,9 +73,41 @@ function noise({ duration, volume, filterFrequency, type = 'lowpass', when = 0 }
   source.stop(start + duration + 0.02);
 }
 
-export function playShoot() {
-  noise({ duration: 0.12, volume: 0.5, filterFrequency: 1800, type: 'highpass' });
-  tone({ frequency: 180, endFrequency: 60, duration: 0.1, type: 'square', volume: 0.25 });
+export function playShoot(kind = 'pistol') {
+  if (kind === 'smg') {
+    noise({ duration: 0.07, volume: 0.32, filterFrequency: 2400, type: 'highpass' });
+    tone({ frequency: 240, endFrequency: 90, duration: 0.06, type: 'square', volume: 0.15 });
+  } else if (kind === 'shotgun') {
+    noise({ duration: 0.28, volume: 0.7, filterFrequency: 900 });
+    tone({ frequency: 120, endFrequency: 40, duration: 0.22, type: 'sawtooth', volume: 0.3 });
+  } else if (kind === 'plasma') {
+    tone({ frequency: 1100, endFrequency: 260, duration: 0.2, type: 'sine', volume: 0.25 });
+    tone({ frequency: 520, endFrequency: 1300, duration: 0.1, type: 'triangle', volume: 0.12 });
+  } else {
+    noise({ duration: 0.12, volume: 0.5, filterFrequency: 1800, type: 'highpass' });
+    tone({ frequency: 180, endFrequency: 60, duration: 0.1, type: 'square', volume: 0.25 });
+  }
+}
+
+
+export function playSkill(kind) {
+  const base = { dario: 330, mika: 520, rocco: 110, luna: 660 }[kind] ?? 400;
+  if (kind === 'rocco') {
+    noise({ duration: 0.4, volume: 0.6, filterFrequency: 260 });
+    tone({ frequency: 110, endFrequency: 35, duration: 0.4, type: 'sawtooth', volume: 0.4 });
+  } else {
+    tone({ frequency: base, endFrequency: base * 2.4, duration: 0.28, type: 'triangle', volume: 0.3 });
+    tone({ frequency: base * 1.5, endFrequency: base * 3, duration: 0.22, type: 'sine', volume: 0.18, when: 0.05 });
+  }
+}
+
+export function playSwitch() {
+  tone({ frequency: 420, duration: 0.04, type: 'square', volume: 0.12 });
+  tone({ frequency: 620, duration: 0.05, type: 'square', volume: 0.12, when: 0.04 });
+}
+
+export function playEmpty() {
+  tone({ frequency: 150, duration: 0.05, type: 'square', volume: 0.12 });
 }
 
 export function playPunch() {
@@ -111,45 +145,4 @@ export function playClick() {
 
 export function playSirenTick(on) {
   tone({ frequency: on ? 880 : 660, duration: 0.18, type: 'sine', volume: 0.08 });
-}
-
-/** Start the engine hum; call every frame with the driven car's speed ratio (0..1). */
-export function updateEngine(speedRatio, driving) {
-  const ctx = ensureContext();
-  if (ctx === null || muted) {
-    if (engineNodes !== null) {
-      engineNodes.osc.stop();
-      engineNodes = null;
-    }
-    return;
-  }
-  if (!driving) {
-    if (engineNodes !== null) {
-      engineNodes.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.1);
-      const nodes = engineNodes;
-      window.setTimeout(() => {
-        try { nodes.osc.stop(); } catch { /* already stopped */ }
-      }, 400);
-      engineNodes = null;
-    }
-    return;
-  }
-  if (engineNodes === null) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 60;
-    gain.gain.value = 0;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 400;
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(master);
-    osc.start();
-    engineNodes = { osc, gain, filter };
-  }
-  const target = 55 + speedRatio * 130;
-  engineNodes.osc.frequency.setTargetAtTime(target, ctx.currentTime, 0.08);
-  engineNodes.gain.gain.setTargetAtTime(0.05 + speedRatio * 0.05, ctx.currentTime, 0.1);
 }
