@@ -112,7 +112,9 @@ export function stageShot(name, world) {
     setWanted(world, 5);
     runSteps(world, 3, (w, i, steps) => {
       if (i === Math.floor(steps / 2)) clearRoute(w, 1300, 0, 3600, 150);
-      return driveControls(w, 3100, 1300);
+      const c = driveControls(w, 3100, 1300);
+      if (i >= steps - 2) c.actions = ACTION_SHOOT;
+      return c;
     });
     // The police spawn 700 away and close in over time; put four of them in
     // the frame — two tight behind the player, two closing in from ahead.

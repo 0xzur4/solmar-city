@@ -64,6 +64,7 @@ function dangerNear(w, ped) {
 }
 
 function stepPed(w, ped, dt) {
+  if (ped.flash > 0) ped.flash -= dt;
   if (ped.state === 'fare') {
     // Waiting for a fare: stand still, face the road.
     ped.speed = 0;
@@ -124,20 +125,6 @@ export function nearestFarePed(w, rangePx) {
   for (const ped of w.peds) {
     if (!ped.fare) continue;
     const dist = Math.hypot(ped.x - w.player.x, ped.y - w.player.y);
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = ped;
-    }
-  }
-  return best;
-}
-
-/** The nearest ped to a point, within range (for punches). */
-export function nearestPed(w, x, y, maxRange) {
-  let best = null;
-  let bestDist = maxRange;
-  for (const ped of w.peds) {
-    const dist = Math.hypot(ped.x - x, ped.y - y);
     if (dist < bestDist) {
       bestDist = dist;
       best = ped;

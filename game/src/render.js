@@ -11,7 +11,14 @@ export const SCREEN_WASTED = 'wasted';
 export const SCREEN_COMPLETE = 'complete';
 
 export function createRenderer(canvas) {
-  const context = canvas.getContext('2d');
+  const TAU = Math.PI * 2;
+  const main = canvas.getContext('2d');
+  let context = main;
+  // Pixel look: the world renders into a 640x360 buffer, upscaled with smoothing off.
+  const buf = document.createElement('canvas');
+  buf.width = 640;
+  buf.height = 360;
+  const bctx = buf.getContext('2d');
   const view = { scale: 1, x: 0, y: 0 };
 
   function resize() {
@@ -23,6 +30,7 @@ export function createRenderer(canvas) {
     view.scale = Math.min(width / VIEW.width, height / VIEW.height);
     view.x = (width - VIEW.width * view.scale) / 2;
     view.y = (height - VIEW.height * view.scale) / 2;
+    main.imageSmoothingEnabled = false;
   }
 
   const fonts = new Map();
@@ -38,7 +46,7 @@ export function createRenderer(canvas) {
   function circle(x, y, radius, color) {
     context.fillStyle = color;
     context.beginPath();
-    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.arc(x, y, radius, 0, TAU);
     context.fill();
   }
 
@@ -67,7 +75,6 @@ export function createRenderer(canvas) {
   }
 
   function drawGround(w, left, top, right, bottom) {
-    // Grass everywhere, then district ground, then sand and water along the south shore.
     context.fillStyle = PALETTE.grass;
     context.fillRect(left, top, right - left, bottom - top);
     for (const block of w.city.blockGround) {
@@ -80,7 +87,6 @@ export function createRenderer(canvas) {
     if (sandBottom > sandTop) {
       context.fillStyle = PALETTE.sand;
       context.fillRect(Math.max(left, 0), sandTop, Math.min(right, WORLD.width) - Math.max(left, 0), sandBottom - sandTop);
-      // Sand texture: darker patches scattered along the beach.
       context.fillStyle = PALETTE.sandDark;
       for (let i = 0; i < 8; i += 1) {
         const patchX = ((i * 613) % 3400) + 100;
@@ -92,7 +98,6 @@ export function createRenderer(canvas) {
     if (bottom > waterTop) {
       context.fillStyle = PALETTE.water;
       context.fillRect(Math.max(left, 0), waterTop, Math.min(right, WORLD.width) - Math.max(left, 0), Math.min(bottom, WORLD.height) - waterTop);
-      // Foam lapping the shoreline, then darker waves drifting east.
       context.fillStyle = 'rgba(255, 255, 255, 0.55)';
       for (let i = 0; i < 12; i += 1) {
         const foamX = ((w.time * 30 + i * 271) % 3600);
@@ -110,7 +115,6 @@ export function createRenderer(canvas) {
   }
 
   function drawRoads(left, top, right, bottom) {
-    // Sidewalk first (wider), asphalt on top, then lane dashes and crosswalks.
     for (const avenue of CITY.avenues) {
       if (avenue + CITY.roadWidth / 2 + CITY.sidewalk < left || avenue - CITY.roadWidth / 2 - CITY.sidewalk > right) continue;
       context.fillStyle = PALETTE.sidewalk;
@@ -158,7 +162,6 @@ export function createRenderer(canvas) {
     const night = lightingState(w.lighting).lamps;
     for (const building of w.city.buildings) {
       if (building.x > right || building.x + building.w < left || building.y > bottom || building.y + building.h < top) continue;
-      // Tall shadows to the south-east: towers throw longer ones.
       const shadowX = 6 + building.height * 3;
       const shadowY = 8 + building.height * 4;
       context.fillStyle = `rgba(0, 0, 0, ${0.15 + building.height * 0.03})`;
@@ -168,7 +171,6 @@ export function createRenderer(canvas) {
       context.strokeStyle = PALETTE.buildingEdge;
       context.lineWidth = 2;
       context.strokeRect(building.x + 1, building.y + 1, building.w - 2, building.h - 2);
-      // Roof edge: a darker parapet line, then the window grid (some lit at night).
       context.fillStyle = 'rgba(0, 0, 0, 0.25)';
       context.fillRect(building.x, building.y, building.w, 5);
       const cols = Math.max(1, Math.floor(building.w / 34));
@@ -180,13 +182,11 @@ export function createRenderer(canvas) {
           context.fillRect(building.x + 10 + c * 34, building.y + 10 + r * 34, 14, 12);
         }
       }
-      // Rooftop clutter on taller buildings: AC boxes and a stair hut.
       if (building.height >= 3) {
         context.fillStyle = 'rgba(0, 0, 0, 0.3)';
         context.fillRect(building.x + 12, building.y + 12, 18, 12);
         context.fillRect(building.x + building.w - 34, building.y + building.h - 26, 22, 14);
       }
-      // Neon storefront sign on the south face, glowing after dark.
       if (building.neon) {
         const signW = Math.min(building.w - 12, building.neon.text.length * 9 + 10);
         const signX = building.x + (building.w - signW) / 2;
@@ -198,7 +198,7 @@ export function createRenderer(canvas) {
         }
         context.fillStyle = building.neon.color;
         context.fillRect(signX, signY, signW, 12);
-        text(building.neon.text, signX + signW / 2, signY + 9, 9, '#10141c', 'center');
+        text(building.neon.text, signX + signW / 2, signY + 9, 12, '#10141c', 'center');
       }
     }
     // Shop awnings on commercial buildings.
@@ -219,7 +219,7 @@ export function createRenderer(canvas) {
       context.fillRect(park.x, park.y + park.h / 2 - 8, park.w, 16);
       context.fillStyle = PALETTE.fountain;
       context.beginPath();
-      context.arc(park.x + park.w * 0.72, park.y + park.h * 0.28, 22, 0, Math.PI * 2);
+      context.arc(park.x + park.w * 0.72, park.y + park.h * 0.28, 22, 0, TAU);
       context.fill();
       context.strokeStyle = 'rgba(255, 255, 255, 0.6)';
       context.lineWidth = 2;
@@ -235,7 +235,7 @@ export function createRenderer(canvas) {
       context.strokeRect(plaza.x + 2, plaza.y + 2, plaza.w - 4, plaza.h - 4);
       context.fillStyle = PALETTE.fountain;
       context.beginPath();
-      context.arc(plaza.x + plaza.w / 2, plaza.y + plaza.h / 2, 26, 0, Math.PI * 2);
+      context.arc(plaza.x + plaza.w / 2, plaza.y + plaza.h / 2, 26, 0, TAU);
       context.fill();
       context.strokeStyle = '#f2f0e6';
       context.lineWidth = 3;
@@ -245,7 +245,7 @@ export function createRenderer(canvas) {
       if (tree.x < left || tree.x > right || tree.y < top || tree.y > bottom) continue;
       context.fillStyle = 'rgba(0, 0, 0, 0.18)';
       context.beginPath();
-      context.ellipse(tree.x + 5, tree.y + 6, tree.r, tree.r * 0.7, 0, 0, Math.PI * 2);
+      context.ellipse(tree.x + 5, tree.y + 6, tree.r, tree.r * 0.7, 0, 0, TAU);
       context.fill();
       context.fillStyle = PALETTE.treeTrunk;
       context.fillRect(tree.x - 2, tree.y - 2, 4, 6);
@@ -287,7 +287,7 @@ export function createRenderer(canvas) {
       if (umbrella.x < left || umbrella.x > right || umbrella.y < top || umbrella.y > bottom) continue;
       context.fillStyle = 'rgba(0, 0, 0, 0.15)';
       context.beginPath();
-      context.ellipse(umbrella.x + 4, umbrella.y + 5, 12, 6, 0, 0, Math.PI * 2);
+      context.ellipse(umbrella.x + 4, umbrella.y + 5, 12, 6, 0, 0, TAU);
       context.fill();
       context.fillStyle = umbrella.color;
       context.beginPath();
@@ -296,7 +296,6 @@ export function createRenderer(canvas) {
       context.fillStyle = '#f2f0e6';
       context.fillRect(umbrella.x + 8, umbrella.y + 2, 14, 6);
     }
-    // Piers reaching into the water, and boats bobbing beside them.
     for (const pier of w.city.piers) {
       if (pier.x > right || pier.x + pier.w < left || pier.y > bottom || pier.y + pier.h < top) continue;
       context.fillStyle = PALETTE.pierWood;
@@ -346,7 +345,7 @@ export function createRenderer(canvas) {
     // Windshield and roof.
     context.fillStyle = 'rgba(20, 30, 40, 0.85)';
     context.fillRect(spec.length * 0.12, -spec.width / 2 + 4, spec.length * 0.2, spec.width - 8);
-    context.fillStyle = 'rgba(255, 255, 255, 0.18)';
+    context.fillStyle = 'rgba(255, 255, 255, 0.35)';
     context.fillRect(-spec.length * 0.28, -spec.width / 2 + 4, spec.length * 0.3, spec.width - 8);
     if (car.model === 'truck') {
       // Cargo bed with crates.
@@ -373,49 +372,55 @@ export function createRenderer(canvas) {
       context.fillStyle = '#f2f0e6';
       context.fillRect(-spec.length * 0.1, -spec.width / 2 + 2, spec.length * 0.28, spec.width - 4);
       context.fillStyle = '#20242e';
-      text('PD', 0, 4, 11, '#20242e', 'center');
+      text('PD', 0, 5, 16, '#20242e', 'center');
       const flash = Math.floor(w.time * 4) % 2 === 0;
       context.fillStyle = flash ? PALETTE.policeLightRed : PALETTE.policeLightBlue;
       context.fillRect(-6, -spec.width / 2 - 2, 12, 5);
     }
     if (car.model === 'taxi') {
       context.fillStyle = '#20242e';
-      text('TAXI', 0, 4, 10, '#20242e', 'center');
+      text('TAXI', 0, 5, 14, '#20242e', 'center');
     }
     context.restore();
     if (car.wrecked) {
       context.fillStyle = 'rgba(0, 0, 0, 0.35)';
       context.beginPath();
-      context.arc(car.x, car.y, 6, 0, Math.PI * 2);
+      context.arc(car.x, car.y, 6, 0, TAU);
       context.fill();
     }
   }
 
-  function drawPerson(x, y, angle, shirt, walkPhase, radius) {
+  function drawPerson(x, y, angle, shirt, walkPhase, radius, f) {
     const bob = Math.sin(walkPhase) * 2;
     context.save();
     context.translate(x, y);
     // Shadow.
     context.fillStyle = 'rgba(0, 0, 0, 0.25)';
     context.beginPath();
-    context.ellipse(2, 3, radius, radius * 0.7, 0, 0, Math.PI * 2);
+    context.ellipse(2, 3, radius * 1.1, radius * 0.75, 0, 0, TAU);
     context.fill();
     context.rotate(angle);
-    // Body: shoulders, then the head in front.
+    context.translate(0, Math.sin(walkPhase) * 1.5);
+    const sq = Math.sin(walkPhase * 2) * 0.07;
+    context.scale(1 + sq, 1 - sq);
+    // Body: thick outline, shoulders, then the big chibi head in front.
+    circle(0, 0, radius * 0.95, '#20242e');
     context.fillStyle = shirt;
     context.beginPath();
-    context.arc(0, 0, radius * 0.85, 0, Math.PI * 2);
+    context.arc(0, 0, radius * 0.85, 0, TAU);
     context.fill();
+    circle(radius * 0.5, 0, radius * 0.7, '#20242e');
     context.fillStyle = PALETTE.player;
     context.beginPath();
-    context.arc(radius * 0.55, 0, radius * 0.5, 0, Math.PI * 2);
+    context.arc(radius * 0.5, 0, radius * 0.6, 0, TAU);
     context.fill();
     // Arms swing a little while walking.
     context.fillStyle = shirt;
     context.beginPath();
-    context.arc(-radius * 0.3, -radius * 0.8 + bob, radius * 0.3, 0, Math.PI * 2);
-    context.arc(-radius * 0.3, radius * 0.8 - bob, radius * 0.3, 0, Math.PI * 2);
+    context.arc(-radius * 0.3, -radius * 0.8 + bob, radius * 0.3, 0, TAU);
+    context.arc(-radius * 0.3, radius * 0.8 - bob, radius * 0.3, 0, TAU);
     context.fill();
+    if (f > 0) circle(0, 0, radius, 'rgba(255, 255, 255, 0.85)');
     context.restore();
   }
 
@@ -425,7 +430,7 @@ export function createRenderer(canvas) {
     // Ground shadow, offset down-right.
     context.fillStyle = 'rgba(0, 0, 0, 0.3)';
     context.beginPath();
-    context.ellipse(heli.x + 26, heli.y + 34, 26, 14, 0, 0, Math.PI * 2);
+    context.ellipse(heli.x + 26, heli.y + 34, 26, 14, 0, 0, TAU);
     context.fill();
     context.save();
     context.translate(heli.x, heli.y);
@@ -435,11 +440,11 @@ export function createRenderer(canvas) {
     context.fillRect(-34, -4, 22, 8);
     context.fillStyle = '#3a4256';
     context.beginPath();
-    context.ellipse(0, 0, 18, 11, 0, 0, Math.PI * 2);
+    context.ellipse(0, 0, 18, 11, 0, 0, TAU);
     context.fill();
     context.fillStyle = 'rgba(140, 200, 230, 0.9)';
     context.beginPath();
-    context.arc(10, 0, 6, 0, Math.PI * 2);
+    context.arc(10, 0, 6, 0, TAU);
     context.fill();
     // Rotor: a spinning blur bar.
     context.rotate(heli.rotor);
@@ -480,7 +485,7 @@ export function createRenderer(canvas) {
       if (pickup.kind === 'cash') {
         context.fillStyle = '#2f9e44';
         context.fillRect(pickup.x - 10, pickup.y - 7 + bobY, 20, 14);
-        text('$', pickup.x, pickup.y + 4 + bobY, 13, '#ffffff', 'center');
+        text('$', pickup.x, pickup.y + 5 + bobY, 18, '#ffffff', 'center');
       } else if (pickup.kind === 'health') {
         context.fillStyle = '#f2f0e6';
         context.fillRect(pickup.x - 9, pickup.y - 9 + bobY, 18, 18);
@@ -490,7 +495,7 @@ export function createRenderer(canvas) {
       } else {
         context.fillStyle = '#8fb8d8';
         context.fillRect(pickup.x - 8, pickup.y - 8 + bobY, 16, 16);
-        text('A', pickup.x, pickup.y + 5 + bobY, 12, '#20242e', 'center');
+        text('A', pickup.x, pickup.y + 6 + bobY, 16, '#20242e', 'center');
       }
     }
     // Hidden packages: gold parcels with a pulsing ring.
@@ -501,14 +506,13 @@ export function createRenderer(canvas) {
       context.strokeStyle = PALETTE.hudGold;
       context.lineWidth = 2;
       context.beginPath();
-      context.arc(pack.x, pack.y, 16 * pulse, 0, Math.PI * 2);
+      context.arc(pack.x, pack.y, 16 * pulse, 0, TAU);
       context.stroke();
       context.fillStyle = '#c9a227';
       context.fillRect(pack.x - 8, pack.y - 6, 16, 12);
       context.fillStyle = '#8a6d1f';
       context.fillRect(pack.x - 1, pack.y - 6, 2, 12);
     }
-    // Mission beacon: a pillar of light and a pulsing ring at the marker.
     const marker = w.marker;
     if (marker) {
       const pulse = 1 + Math.sin(w.time * 4) * 0.15;
@@ -517,7 +521,7 @@ export function createRenderer(canvas) {
       context.strokeStyle = PALETTE.marker;
       context.lineWidth = 3;
       context.beginPath();
-      context.arc(marker.x, marker.y, 34 * pulse, 0, Math.PI * 2);
+      context.arc(marker.x, marker.y, 34 * pulse, 0, TAU);
       context.stroke();
       context.fillStyle = PALETTE.marker;
       context.beginPath();
@@ -535,9 +539,8 @@ export function createRenderer(canvas) {
       const bobY = Math.sin(w.time * 5 + ped.id) * 4;
       context.fillStyle = '#ffd23f';
       context.fillRect(ped.x - 8, ped.y - 34 + bobY, 16, 12);
-      text('$', ped.x, ped.y - 24 + bobY, 11, '#20242e', 'center');
+      text('$', ped.x, ped.y - 24 + bobY, 14, '#20242e', 'center');
     }
-    // People and cars, sorted by y so nearer things draw over farther ones.
     const drawables = [];
     for (const ped of w.peds) drawables.push({ y: ped.y, kind: 'ped', ref: ped });
     for (const cop of w.footPolice) drawables.push({ y: cop.y, kind: 'cop', ref: cop });
@@ -548,20 +551,28 @@ export function createRenderer(canvas) {
       if (item.y < top - 60 || item.y > bottom + 60) continue;
       if (item.kind === 'ped') {
         const ped = item.ref;
-        drawPerson(ped.x, ped.y, ped.angle, ped.color, ped.walkPhase, 11);
+        drawPerson(ped.x, ped.y, ped.angle, ped.color, ped.walkPhase, 11, ped.flash);
       } else if (item.kind === 'cop') {
         const cop = item.ref;
-        drawPerson(cop.x, cop.y, cop.angle, PALETTE.policeShirt, cop.walkPhase, 12);
+        drawPerson(cop.x, cop.y, cop.angle, PALETTE.policeShirt, cop.walkPhase, 12, cop.flash);
         context.fillStyle = '#20242e';
         context.beginPath();
-        context.arc(cop.x + Math.cos(cop.angle) * 6, cop.y + Math.sin(cop.angle) * 6, 5, 0, Math.PI * 2);
+        context.arc(cop.x + Math.cos(cop.angle) * 6, cop.y + Math.sin(cop.angle) * 6, 5, 0, TAU);
         context.fill();
       } else if (item.kind === 'car') {
         drawCarShape(w, item.ref);
       } else {
         const player = item.ref;
         const blink = player.invuln > 0 && Math.floor(player.invuln * 10) % 2 === 0;
-        if (!blink) drawPerson(player.x, player.y, player.angle, PALETTE.playerShirt, player.walkPhase, 13);
+        if (!blink) {
+          drawPerson(player.x, player.y, player.angle, PALETTE.playerShirt, player.walkPhase, 13, w.time - player.lastDamage < 0.15 ? 1 : 0);
+          context.save();
+          context.translate(player.x, player.y);
+          context.rotate(player.aimAngle);
+          context.fillStyle = '#20242e';
+          context.fillRect(8, -2, 14, 4);
+          context.restore();
+        }
         // Aim line while the pistol was just fired.
         if (player.shootTimer > 0.12) {
           context.strokeStyle = 'rgba(255, 224, 138, 0.8)';
@@ -573,6 +584,8 @@ export function createRenderer(canvas) {
         }
       }
     }
+    // Muzzle flash.
+    if (w.player.shootTimer > 0.12) circle(w.lastShotX, w.lastShotY, 8, '#ffe08a');
     // Bullets.
     context.fillStyle = '#ffe08a';
     for (const bullet of w.bullets) {
@@ -593,7 +606,6 @@ export function createRenderer(canvas) {
     context.globalAlpha = 1;
     // The helicopter flies above it all.
     drawHelicopter(w);
-    // Night and golden hour: dim the world, then pool the light back in.
     const light = lightingState(w.lighting);
     if (light.darkness > 0 || light.warmth > 0) {
       if (light.warmth > 0) {
@@ -635,7 +647,6 @@ export function createRenderer(canvas) {
         drawGlow(flash ? redGlow : blueGlow, car.x, car.y, 80, 0.55);
         drawGlow(flash ? blueGlow : redGlow, car.x, car.y, 50, 0.3);
       }
-      // Helicopter searchlight: beam and pool, punching through the dark.
       if (w.heli.active) {
         drawGlow(whiteGlow, w.heli.spotX, w.heli.spotY, 95, 0.5);
         context.strokeStyle = 'rgba(255, 255, 230, 0.22)';
@@ -651,20 +662,26 @@ export function createRenderer(canvas) {
 
   /** Paint one frame: the world, the HUD, and the screen's panel. */
   function draw(w, screen) {
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.fillStyle = PALETTE.backdrop;
-    context.fillRect(0, 0, canvas.width, canvas.height);
     const zoom = w.camera.zoom;
     const shakeX = (Math.random() - 0.5) * w.effects.shake;
     const shakeY = (Math.random() - 0.5) * w.effects.shake;
-    // World space: the camera centre sits in the middle of the view, zoomed in.
+    // World space, into the low-res buffer: the camera centre sits in the middle
+    // of the view, zoomed in.
+    const bs = buf.width / VIEW.width;
+    context = bctx;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.fillStyle = PALETTE.backdrop;
+    context.fillRect(0, 0, buf.width, buf.height);
     context.setTransform(
-      view.scale * zoom, 0, 0, view.scale * zoom,
-      view.x + (VIEW.width / 2 - w.camera.x * zoom + shakeX * zoom) * view.scale,
-      view.y + (VIEW.height / 2 - w.camera.y * zoom + shakeY * zoom) * view.scale,
+      bs * zoom, 0, 0, bs * zoom,
+      (VIEW.width / 2 - w.camera.x * zoom + shakeX * zoom) * bs,
+      (VIEW.height / 2 - w.camera.y * zoom + shakeY * zoom) * bs,
     );
     drawWorld(w);
-    // View space (1280x720) for the HUD and the panels.
+    // Upscale the buffer to the screen, then the HUD at full resolution.
+    context = main;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.drawImage(buf, 0, 0, canvas.width, canvas.height);
     context.setTransform(view.scale, 0, 0, view.scale, view.x, view.y);
     // Low-health damage vignette.
     if (w.player.hp > 0 && w.player.hp < 35) {

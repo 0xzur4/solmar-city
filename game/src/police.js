@@ -132,6 +132,7 @@ function stepPoliceCar(w, car, dt) {
 }
 
 function stepFootPolice(w, cop, dt) {
+  if (cop.flash > 0) cop.flash -= dt;
   const player = w.player;
   const dist = Math.hypot(player.x - cop.x, player.y - cop.y);
   if (dist > WANTED.despawnRange) {

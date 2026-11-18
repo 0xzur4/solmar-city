@@ -192,6 +192,7 @@ export function stepPlayerCar(w, car, controls, dt) {
   car.x += car.vx * dt;
   car.y += car.vy * dt;
   car.brakeLight = throttle < 0;
+  if (throttle > 0 && Math.random() < 0.3) w.effects.smoke(car.x - forward * spec.length * 0.5, car.y - right * spec.length * 0.5);
   // Skid marks and smoke while sliding sideways.
   const lateral = Math.abs(car.vx * Math.sin(car.angle) - car.vy * Math.cos(car.angle));
   if ((handbrake && Math.abs(car.speed) > 120) || lateral > 170) {

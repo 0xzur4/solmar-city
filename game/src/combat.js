@@ -42,6 +42,7 @@ export function fireBullet(w, x, y, angle, fromPlayer) {
 
 function hitPerson(w, person, damage, fromPlayer) {
   person.hp -= damage;
+  person.flash = 0.15;
   w.effects.blood(person.x, person.y);
   if (person.hp <= 0) {
     if (fromPlayer) {
@@ -95,6 +96,8 @@ function stepBullet(w, bullet, dt) {
   for (const ped of w.peds) {
     if (Math.hypot(bullet.x - ped.x, bullet.y - ped.y) < 14) {
       if (hitPerson(w, ped, PISTOL.damage, true)) ped.dead = true;
+      ped.x += bullet.vx * 0.012;
+      ped.y += bullet.vy * 0.012;
       bullet.active = false;
       return;
     }
@@ -102,6 +105,8 @@ function stepBullet(w, bullet, dt) {
   for (const cop of w.footPolice) {
     if (Math.hypot(bullet.x - cop.x, bullet.y - cop.y) < 15) {
       if (hitPerson(w, cop, PISTOL.damage, true)) cop.dead = true;
+      cop.x += bullet.vx * 0.012;
+      cop.y += bullet.vy * 0.012;
       bullet.active = false;
       return;
     }
