@@ -1,11 +1,12 @@
-// The screenshot scenes behind ?shot=chase|foot|drive|mission. Each one plays the real rules
-// forward from a fresh world for a fixed number of steps, steered by a small autopilot that
-// drives or walks toward the scene's target, so the frame is what real play looks like and
-// the same seed always gives the same frame.
+// shots.js: The screenshot scenes behind ?shot=chase|foot|drive|mission. Each one 
 import { STEP } from './config.js';
 import { createCar } from './vehicles.js';
 import { placePoint } from './missions.js';
+import { fixLighting } from './lighting.js';
 import { SCREEN_PLAY } from './render.js';
+
+/** The shoot action's bit, as input.js defines it. */
+const ACTION_SHOOT = 32;
 
 function angleDifference(a, b) {
   let diff = b - a;
@@ -61,7 +62,9 @@ function putPlayerInCar(w, model, x, y, angle) {
 /** Clear the road ahead of a driving shot — traffic and parked cars both — so the staged car
  * is moving, not queued in traffic or clipped by a parked car at the road's edge. */
 function clearRoute(w, yCenter, xMin, xMax, halfWidth) {
+  // Police cars stay: they are the chase. Everything else on the road goes.
   w.cars = w.cars.filter((car) => {
+    if (car.police) return true;
     const onRoute = car.y > yCenter - halfWidth && car.y < yCenter + halfWidth && car.x > xMin && car.x < xMax;
     return !onRoute;
   });
@@ -84,72 +87,118 @@ function setWanted(w, stars) {
 function runSteps(w, seconds, controlsFor) {
   const steps = Math.round(seconds / STEP);
   for (let i = 0; i < steps; i += 1) {
-    w.step(STEP, controlsFor(w));
+    w.step(STEP, controlsFor(w, i, steps));
   }
 }
 
 /**
  * Set `world` to the named scene and return the screen to draw over it.
- * chase: a police chase at 3 stars, driving for the safehouse (the cover shot).
- * foot: on foot downtown, walking to the park contact among pedestrians.
- * drive: cruising the beach road toward the marina.
- * mission: holding the marina warehouse while the police close in.
+ * chase: a five-star night chase through downtown, helicopter overhead (the cover shot).
+ * foot: on-foot combat at a downtown intersection at golden hour, cops closing in.
+ * drive: cruising downtown at golden hour, towers and neon on both sides.
+ * mission: holding the bank doors at night while the police close in.
  */
 export function stageShot(name, world) {
   world.reset();
   if (name === 'chase') {
-    // Straight down the beach road toward the safehouse: no turns, no traffic jam,
-    // the sports car at speed with the police closing in behind it.
-    clearRoute(world, 2045, 0, 3600, 150);
-    putPlayerInCar(world, 'sports', 2700, 2000, Math.PI);
-    setMission(world, 3, 2);
-    setWanted(world, 3);
-    runSteps(world, 3.5, (w) => {
-      const point = placePoint(w.city, 'safehouse');
-      return driveControls(w, point.x, point.y);
+    fixLighting(world.lighting, 'night');
+    // East along the downtown street: towers, neon, sirens, the sports car at speed.
+    // A long run-up and a mid-run re-clear keep the car moving: traffic wanders into
+    // the street during staging, and every ram halves the car's speed, so a car that
+    // gets boxed once never gets going again.
+    clearRoute(world, 1300, 0, 3600, 150);
+    putPlayerInCar(world, 'sports', 800, 1300, 0);
+    setMission(world, 3, 1);
+    setWanted(world, 5);
+    runSteps(world, 3, (w, i, steps) => {
+      if (i === Math.floor(steps / 2)) clearRoute(w, 1300, 0, 3600, 150);
+      return driveControls(w, 3100, 1300);
     });
-    // The police spawn 700 away and close in over time; put the first two right behind
+    // The police spawn 700 away and close in over time; put the first three behind
     // the player so the chase reads in the frame.
     const car = world.player.car;
-    world.policeCars.slice(0, 2).forEach((policeCar, i) => {
-      policeCar.x = car.x + 320 + i * 130;
-      policeCar.y = car.y + (i === 0 ? -50 : 55);
-      policeCar.angle = Math.PI;
-      policeCar.vx = -380;
+    world.policeCars.slice(0, 3).forEach((policeCar, i) => {
+      policeCar.x = car.x - 450 - i * 130;
+      policeCar.y = car.y + (i === 1 ? -55 : i === 2 ? 55 : 0);
+      policeCar.angle = 0;
+      policeCar.vx = 420;
       policeCar.vy = 0;
     });
     return { screen: SCREEN_PLAY };
   }
   if (name === 'foot') {
+    fixLighting(world.lighting, 'golden');
     setMission(world, 2, 0);
-    // Mid-walk to the park contact: the marker ahead, pedestrians around, step unfinished.
-    world.player.x = world.city.park.x - 500;
-    world.player.y = world.city.park.y + world.city.park.h / 2;
-    runSteps(world, 1.5, (w) => {
-      const point = placePoint(w.city, 'park');
-      return walkControls(w, point.x, point.y);
+    setWanted(world, 2);
+    // On foot at the downtown intersection, shooting at the cops who come for the package.
+    // The walk is short on purpose: the park contact's marker stays unfinished. The cops
+    // start far enough that they only just reach the player as the frame is taken.
+    world.player.x = 1500;
+    world.player.y = 1250;
+    world.player.ammo = 24;
+    for (const pack of world.packages) {
+      if (Math.hypot(pack.x - world.player.x, pack.y - world.player.y) < 350) {
+        pack.x = 300;
+        pack.y = 300;
+      }
+    }
+    for (let i = 0; i < 2; i += 1) {
+      world.footPolice.push({
+        x: world.player.x + (i === 0 ? 120 : -80),
+        y: world.player.y + (i === 0 ? -500 : 500),
+        angle: Math.PI,
+        speed: 0,
+        radius: 14,
+        hp: 60,
+        isCop: true,
+        arrestTimer: 0,
+        walkPhase: 0,
+      });
+    }
+    runSteps(world, 1.5, (w, i, steps) => {
+      const cop = w.footPolice[0];
+      const aimX = cop !== undefined ? cop.x : w.player.x + 100;
+      const aimY = cop !== undefined ? cop.y : w.player.y;
+      const controls = walkControls(w, 1600, 1250);
+      controls.aimX = aimX;
+      controls.aimY = aimY;
+      // One shot only, on the final step, so the muzzle flash is fresh.
+      controls.actions = i === steps - 1 ? ACTION_SHOOT : 0;
+      return controls;
     });
     return { screen: SCREEN_PLAY };
   }
   if (name === 'drive') {
-    clearRoute(world, 2040, 0, 3600, 150);
-    putPlayerInCar(world, 'sedan', 300, 2000, 0);
+    fixLighting(world.lighting, 'golden');
+    clearRoute(world, 1300, 0, 3600, 150);
+    putPlayerInCar(world, 'muscle', 1500, 1300, 0);
     setMission(world, 0, 1);
-    runSteps(world, 2, (w) => {
-      const point = placePoint(w.city, 'marina');
-      return driveControls(w, point.x, point.y);
-    });
+    runSteps(world, 2.5, (w) => driveControls(w, 3100, 1300));
     return { screen: SCREEN_PLAY };
   }
   if (name === 'mission') {
-    setMission(world, 4, 1);
-    world.missions.timer = 6;
+    fixLighting(world.lighting, 'night');
+    setMission(world, 6, 1);
+    world.missions.timer = 8;
     setWanted(world, 3);
-    const point = placePoint(world.city, 'marina');
+    const point = placePoint(world.city, 'bank');
     world.player.x = point.x;
     world.player.y = point.y;
-    runSteps(world, 8, (w) => {
-      const marker = placePoint(w.city, 'marina');
+    for (let i = 0; i < 2; i += 1) {
+      world.footPolice.push({
+        x: point.x - 200 - i * 80,
+        y: point.y + 140 - i * 120,
+        angle: 0,
+        speed: 0,
+        radius: 14,
+        hp: 60,
+        isCop: true,
+        arrestTimer: 0,
+        walkPhase: 0,
+      });
+    }
+    runSteps(world, 6, (w) => {
+      const marker = placePoint(w.city, 'bank');
       return walkControls(w, marker.x + Math.sin(w.time) * 40, marker.y + Math.cos(w.time) * 40);
     });
     // Police rams shove the player off the point while staging: put them back on it and

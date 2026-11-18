@@ -1,5 +1,4 @@
-// A small seeded random number generator (mulberry32): the same seed gives the same city,
-// the same traffic and the same screenshot scenes, which is what makes the game repeatable.
+// random.js: A small seeded random number generator (mulberry32): the same seed giv
 
 export function createRandom(seed) {
   let state = seed | 0;

@@ -1,6 +1,4 @@
-// Combat: the pistol and the punch. Bullets are pooled, fly straight, and stop at the first
-// thing they hit — a building, a car, a pedestrian, a cop, or the player. Punching is a short
-// arc in front of the attacker. Nothing here reads the mouse; the caller passes an aim angle.
+// combat.js: Combat: the pistol and the punch. Bullets are pooled, fly straight, an
 import { PISTOL, PLAYER } from './config.js';
 import { buildingAt } from './city.js';
 import { damageCar } from './vehicles.js';

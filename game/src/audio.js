@@ -1,6 +1,4 @@
-// All sound is synthesised with the Web Audio API: no audio files, no network. The context
-// is created on the first user gesture (browsers block audio before one) and every effect is
-// a short oscillator or filtered noise burst. The engine hum follows the driven car's speed.
+// audio.js: All sound is synthesised with the Web Audio API: no audio files, no ne
 
 let context = null;
 let master = null;
@@ -84,6 +82,11 @@ export function playPunch() {
 
 export function playCrash(strength) {
   noise({ duration: 0.18, volume: Math.min(0.6, 0.2 + strength * 0.001), filterFrequency: 300 });
+}
+
+export function playExplosion() {
+  noise({ duration: 0.5, volume: 0.6, filterFrequency: 220 });
+  tone({ frequency: 90, endFrequency: 30, duration: 0.45, type: 'sawtooth', volume: 0.35 });
 }
 
 export function playPickup() {

@@ -1,8 +1,7 @@
-// The HUD and the menus, drawn in 1280x720 view coordinates: objective tracker, wanted
-// stars, money and health, the minimap, speed and ammo, hints, the message banner, and the
-// full-screen panels for the title, pause, busted, wasted and completed screens.
-import { CITY, PALETTE, VIEW, WORLD } from './config.js';
-import { currentMission, currentStep } from './missions.js';
+// hud.js: The HUD and the menus, drawn in 1280x720 view coordinates: objective t
+import { CITY, MONEY, PALETTE, PICKUPS, VIEW, WORLD } from './config.js';
+import { MISSIONS, currentMission, currentStep } from './missions.js';
+import { packagesFound } from './sidejobs.js';
 
 const MINIMAP = { width: 224, height: 160, x: VIEW.width - 224 - 16, y: VIEW.height - 160 - 16 };
 
@@ -45,12 +44,19 @@ function drawPanel(context, text, x, y, width, height, title, lines, prompt) {
   if (prompt) text(prompt, VIEW.width / 2, y + height - 36, 22, PALETTE.hudGold, 'center');
 }
 
-function drawStars(context, text, stars) {
+function drawStars(context, text, w) {
+  const stars = w.wanted.stars;
   const x0 = VIEW.width - 220;
   const y0 = 22;
   text('WANTED', x0 - 12, y0 + 14, 16, PALETTE.hudText, 'right');
+  // The newest star pulses while the heat is on.
+  const pulse = stars > 0 ? 1 + Math.sin(w.time * 8) * 0.18 : 1;
   for (let i = 0; i < 5; i += 1) {
-    text('★', x0 + i * 26, y0 + 16, 24, i < stars ? PALETTE.star : PALETTE.starEmpty, 'left');
+    const size = i === stars - 1 ? Math.round(24 * pulse) : 24;
+    text('★', x0 + i * 26, y0 + 16, size, i < stars ? PALETTE.star : PALETTE.starEmpty, 'left');
+  }
+  if (w.heli.active) {
+    text('HELI', x0 - 12, y0 + 42, 14, PALETTE.hudBad, 'right');
   }
 }
 
@@ -97,10 +103,12 @@ function drawMinimap(context, text, w) {
   for (const building of w.city.buildings) {
     context.fillRect(ox + building.x * scale, oy + building.y * scale, Math.max(1, building.w * scale), Math.max(1, building.h * scale));
   }
-  // The view rectangle.
+  // The view rectangle, sized by the camera zoom.
+  const halfW = VIEW.width / (2 * w.camera.zoom);
+  const halfH = VIEW.height / (2 * w.camera.zoom);
   context.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   context.lineWidth = 1;
-  context.strokeRect(ox + (w.camera.x - VIEW.width / 2) * scale, oy + (w.camera.y - VIEW.height / 2) * scale, VIEW.width * scale, VIEW.height * scale);
+  context.strokeRect(ox + (w.camera.x - halfW) * scale, oy + (w.camera.y - halfH) * scale, halfW * 2 * scale, halfH * 2 * scale);
   // Blips: mission marker, fare peds, police, player.
   const marker = w.marker;
   if (marker) {
@@ -155,23 +163,31 @@ export function drawHud(context, text, w) {
     text(mission.name, 30, 40, 20, PALETTE.hudGold, 'left');
     text(step.text, 30, 64, 17, PALETTE.hudText, 'left');
     const marker = w.marker;
-    if (marker) {
+    if (marker && step.type !== 'race') {
       const px = player.car !== null ? player.car.x : player.x;
       const py = player.car !== null ? player.car.y : player.y;
       const dist = Math.round(Math.hypot(marker.x - px, marker.y - py));
       text(`${dist}m`, 432, 40, 18, PALETTE.hudMuted, 'right');
     }
-    if (step.type === 'hold' || step.type === 'survive') {
+    if (step.type === 'hold' || step.type === 'survive' || step.type === 'race') {
       const left = Math.max(0, Math.ceil(step.seconds - w.missions.timer));
       text(`${left}s`, 432, 64, 18, PALETTE.hudText, 'right');
+    }
+    if (step.type === 'race') {
+      text(`Checkpoint ${w.missions.checkpoint + 1}/${step.checkpoints.length}`, 432, 40, 18, PALETTE.hudText, 'right');
     }
   } else if (w.missions.done) {
     text('King of Solmar', 30, 40, 20, PALETTE.hudGold, 'left');
     text('Free roam — the city is yours.', 30, 64, 17, PALETTE.hudText, 'left');
   }
-  // Top-right: wanted stars, money, health.
-  drawStars(context, text, w.wanted.stars);
+  // Top-right: wanted stars, money, health, packages.
+  drawStars(context, text, w);
   text(`$${player.money}`, VIEW.width - 24, 62, 26, PALETTE.hudGold, 'right');
+  context.fillStyle = PALETTE.hudPanel;
+  context.beginPath();
+  context.roundRect(VIEW.width - 24 - 150, 118, 150, 24, 6);
+  context.fill();
+  text(`Packages ${packagesFound(w)}/${PICKUPS.packages}`, VIEW.width - 32, 135, 14, PALETTE.hudText, 'right');
   const healthW = 180;
   const healthX = VIEW.width - 24 - healthW;
   const healthY = 96;
@@ -189,7 +205,8 @@ export function drawHud(context, text, w) {
     const speed = Math.round(Math.hypot(player.car.vx, player.car.vy) * 0.18);
     text(`${speed} km/h`, 30, VIEW.height - 40, 20, PALETTE.hudText, 'left');
     text(`Car ${Math.max(0, Math.round(player.car.health))}%`, 30, VIEW.height - 24, 14, PALETTE.hudMuted, 'left');
-    text('E: exit car', 300, VIEW.height - 40, 14, PALETTE.hudMuted, 'right');
+    const nearGarage = Math.hypot(w.city.garage.x - player.car.x, w.city.garage.y - player.car.y) < 140;
+    text(nearGarage && player.car.health < 100 ? `G: repair $${MONEY.repairCost}` : 'E: exit car', 300, VIEW.height - 40, 14, PALETTE.hudMuted, 'right');
   } else {
     text(`Ammo ${player.ammo}`, 30, VIEW.height - 40, 20, PALETTE.hudText, 'left');
     text('E: enter car   F: punch   Click: shoot', 30, VIEW.height - 24, 14, PALETTE.hudMuted, 'left');
@@ -204,6 +221,34 @@ export function drawHud(context, text, w) {
     text(w.message.text, VIEW.width / 2, 150, 24, PALETTE.hudText, 'center');
     context.globalAlpha = 1;
   }
+  // Mission card: the job briefing or the completion banner, centre screen.
+  if (w.missionCard !== null) {
+    const card = w.missionCard;
+    context.globalAlpha = Math.min(1, card.timer);
+    context.fillStyle = 'rgba(10, 14, 20, 0.82)';
+    context.beginPath();
+    context.roundRect(VIEW.width / 2 - 310, 196, 620, 108, 10);
+    context.fill();
+    context.strokeStyle = 'rgba(255, 210, 63, 0.6)';
+    context.lineWidth = 2;
+    context.stroke();
+    text(card.title, VIEW.width / 2, 234, 28, PALETTE.hudGold, 'center');
+    context.font = '16px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+    for (const [i, line] of wrapLine(context, card.sub, 580).entries()) {
+      text(line, VIEW.width / 2, 264 + i * 22, 16, PALETTE.hudText, 'center');
+    }
+    context.globalAlpha = 1;
+  }
+  // Low health warning, pulsing.
+  if (player.hp > 0 && player.hp < 30) {
+    context.globalAlpha = 0.6 + Math.sin(w.time * 6) * 0.4;
+    text('LOW HEALTH — find a health pack', VIEW.width / 2, 320, 20, PALETTE.hudBad, 'center');
+    context.globalAlpha = 1;
+  }
+  // Helicopter warning, above the controls hint at the bottom.
+  if (w.heli.active) {
+    text('POLICE HELICOPTER — break line of sight', VIEW.width / 2, VIEW.height - 112, 17, PALETTE.hudBad, 'center');
+  }
   // Early-game controls hint.
   if (w.time < 25 && !w.missions.done) {
     text('WASD move · Shift run · E enter car · Space handbrake · P pause · M mute', VIEW.width / 2, VIEW.height - 90, 15, PALETTE.hudMuted, 'center');
@@ -211,16 +256,23 @@ export function drawHud(context, text, w) {
   drawMinimap(context, text, w);
 }
 
+/** One line naming every job, with its state: done, current, or locked. */
+function jobsLine(w) {
+  return `Jobs: ${MISSIONS.map((m, i) => `${i < w.missions.index ? '✓' : i === w.missions.index ? '▶' : '·'} ${m.name}`).join('   ')}`;
+}
+
 export function drawScreenPanel(context, text, kind, w) {
   if (kind === 'title') {
     const lines = [
       'Dario Reyes is back in Solmar — and the fixer Mara Voss has work for him.',
-      'Six jobs. One rival. A city that never sleeps.',
+      'Eleven jobs. One rival. A city that never sleeps.',
       '',
       'WASD move · Shift run · E enter or exit a car · Space handbrake',
-      'Click shoot · F punch · P pause · M mute',
+      'Click shoot · F punch · G repair at the garage · P pause · M mute',
       '',
-      `Money $${w.player.money} · ${w.stats.faresDone} fares done · ${w.stats.carsStolen} cars stolen`,
+      jobsLine(w),
+      '',
+      `Money $${w.player.money} · ${w.stats.faresDone} fares done · ${w.stats.carsStolen} cars stolen · ${packagesFound(w)}/${PICKUPS.packages} packages`,
     ];
     const prompt = w.saveExists ? 'Enter: continue   N: new game' : 'Press Enter or click to start';
     drawPanel(context, text, 300, 130, 680, 460, 'SOLMAR', lines, prompt);
@@ -228,8 +280,12 @@ export function drawScreenPanel(context, text, kind, w) {
     return;
   }
   if (kind === 'paused') {
-    drawPanel(context, text, 340, 200, 600, 320, 'PAUSED', [
+    drawPanel(context, text, 340, 150, 600, 420, 'PAUSED', [
       'The city waits for you.',
+      '',
+      jobsLine(w),
+      '',
+      `Money $${w.player.money} · Earned $${w.stats.earned} · ${w.stats.faresDone} fares · ${packagesFound(w)}/${PICKUPS.packages} packages`,
       '',
       'P / Esc: resume     S: save game',
       'R: restart mission     Q: quit to title',
@@ -259,7 +315,7 @@ export function drawScreenPanel(context, text, kind, w) {
       'Vince Kroll is finished. Mara pays in full.',
       'You run this city now.',
       '',
-      `Earned $${w.stats.earned} · ${w.stats.faresDone} fares · ${w.stats.carsStolen} cars stolen`,
+      `Earned $${w.stats.earned} · ${w.stats.faresDone} fares · ${w.stats.carsStolen} cars stolen · ${packagesFound(w)}/${PICKUPS.packages} packages`,
       `Final cash: $${w.player.money}`,
       '',
       'Free roam continues — the streets are still yours.',

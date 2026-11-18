@@ -1,9 +1,8 @@
-// Cars: the player's arcade driving, traffic that follows the road graph, and parked cars.
-// A car is one object; the player-driven one uses velocity-vector drift physics, traffic
-// cars steer between intersections, parked cars just sit there until stolen.
+// vehicles.js: Cars: the player's arcade driving, traffic that follows the road graph
 import { CAR_MODELS, CITY, TRAFFIC, WORLD } from './config.js';
 import { nearestIntersection, onAsphalt, randomRoadPoint, resolveBuildingCollision } from './city.js';
 import { pick, range } from './random.js';
+import { playExplosion } from './audio.js';
 
 let nextCarId = 1;
 
@@ -61,7 +60,7 @@ function lanePoint(from, to) {
 
 export function spawnTrafficCars(city, random, count) {
   const cars = [];
-  const models = ['sedan', 'taxi', 'van', 'pickup'];
+  const models = ['sedan', 'taxi', 'van', 'pickup', 'sedan', 'taxi', 'muscle', 'truck'];
   for (let i = 0; i < count; i += 1) {
     const point = randomRoadPoint(random);
     const car = createCar(pick(random, models), point.x, point.y, random() * Math.PI * 2, {
@@ -77,7 +76,7 @@ export function spawnTrafficCars(city, random, count) {
 
 export function spawnParkedCars(city, random, count) {
   const cars = [];
-  const models = ['sedan', 'taxi', 'van', 'pickup', 'sports'];
+  const models = ['sedan', 'taxi', 'van', 'pickup', 'sports', 'muscle', 'truck'];
   for (let i = 0; i < count; i += 1) {
     const point = randomRoadPoint(random);
     const onAvenue = CITY.avenues.includes(point.x);
@@ -217,9 +216,13 @@ export function stepPlayerCar(w, car, controls, dt) {
       w.effects.smoke(car.x + Math.cos(car.angle) * spec.length * 0.3, car.y + Math.sin(car.angle) * spec.length * 0.3);
     }
   }
+  // Off-road at speed kicks up dust behind the car.
+  if (!onAsphalt(w.city, car.x, car.y) && Math.abs(car.speed) > 200 && w.random() < 0.35) {
+    w.effects.dust(car.x - Math.cos(car.angle) * spec.length * 0.4, car.y - Math.sin(car.angle) * spec.length * 0.4);
+  }
 }
 
-/** Damage a car; a wrecked car stops and smokes. Returns true if it just wrecked. */
+/** Damage a car; a wrecked car stops, smokes and — for a hard kill — explodes. Returns true if it just wrecked. */
 export function damageCar(w, car, amount) {
   if (car.wrecked) return false;
   car.health -= amount;
@@ -229,8 +232,8 @@ export function damageCar(w, car, amount) {
     car.speed = 0;
     car.vx = 0;
     car.vy = 0;
-    w.effects.sparks(car.x, car.y);
-    w.effects.smoke(car.x, car.y);
+    w.effects.explosion(car.x, car.y);
+    playExplosion();
     return true;
   }
   return false;

@@ -1,17 +1,18 @@
-// The world: one object holding everything, and the one step that advances it. The player,
-// the traffic, the police, the pedestrians, the missions, the pickups and the camera all
-// update here, in that order, so a step is deterministic for a given seed and input.
-import { MONEY, PICKUPS, PLAYER, PISTOL, TRAFFIC, VIEW, WORLD } from './config.js';
+// world.js: The world: one object holding everything, and the one step that advanc
+import { CAMERA, MONEY, PICKUPS, PLAYER, PISTOL, TRAFFIC, VIEW, WORLD } from './config.js';
 import { createCity, randomRoadPoint, randomSidewalkPoint } from './city.js';
 import { createEffects } from './effects.js';
 import { createBullets, stepBullets } from './combat.js';
 import { createMissionState, placePoint, restartMission, stepMarker, updateMissions } from './missions.js';
-import { clearWanted, stepPolice } from './police.js';
+import { clearRoadblock, clearWanted, stepPolice } from './police.js';
 import { createPed, spawnFarePeds, spawnPeds, stepPeds } from './pedestrians.js';
 import { stepPlayer } from './player.js';
 import { saveGame } from './save.js';
 import { collideCars, spawnParkedCars, spawnTrafficCars, stepTraffic } from './vehicles.js';
 import { updateEngine } from './audio.js';
+import { createLighting, stepLighting } from './lighting.js';
+import { createHeli } from './helicopter.js';
+import { spawnPackages } from './sidejobs.js';
 
 export const EVENT_MISSION = 1;
 export const EVENT_BUSTED = 2;
@@ -44,6 +45,7 @@ function populate(w) {
   w.footPolice = [];
   w.pickups = [];
   spawnPickups(w);
+  w.packages = spawnPackages(w);
 }
 
 export function createWorld(random) {
@@ -81,10 +83,16 @@ export function createWorld(random) {
     fare: null,
     wanted: { heat: 0, stars: 0, lastCrime: -100 },
     missions: createMissionState(),
-    stats: { earned: 0, faresDone: 0, carsStolen: 0 },
-    camera: { x: city.spawn.x, y: city.spawn.y },
+    stats: { earned: 0, faresDone: 0, carsStolen: 0, packages: 0 },
+    camera: { x: city.spawn.x, y: city.spawn.y, zoom: CAMERA.zoom },
     marker: null,
     message: { text: '', timer: 0 },
+    missionCard: null,
+    lighting: createLighting(),
+    heli: createHeli(),
+    roadblock: null,
+    roadblockCooldown: 0,
+    packages: [],
     busted: false,
     penalty: 0,
     lastShot: -100,
@@ -119,10 +127,15 @@ export function createWorld(random) {
     w.fare = null;
     w.wanted = { heat: 0, stars: 0, lastCrime: -100 };
     w.missions = createMissionState();
-    w.stats = { earned: 0, faresDone: 0, carsStolen: 0 };
+    w.stats = { earned: 0, faresDone: 0, carsStolen: 0, packages: 0 };
     w.camera.x = city.spawn.x;
     w.camera.y = city.spawn.y;
+    w.camera.zoom = CAMERA.zoom;
     w.message = { text: '', timer: 0 };
+    w.missionCard = null;
+    w.heli = createHeli();
+    clearRoadblock(w);
+    w.roadblockCooldown = 0;
     w.busted = false;
     w.penalty = 0;
     w.bullets = createBullets();
@@ -141,6 +154,10 @@ export function createWorld(random) {
     w.stats.earned = data.earned ?? 0;
     w.stats.faresDone = data.faresDone ?? 0;
     w.stats.carsStolen = data.carsStolen ?? 0;
+    w.stats.packages = data.packagesTaken?.length ?? 0;
+    for (const pack of w.packages) {
+      if (data.packagesTaken?.includes(pack.id)) pack.taken = true;
+    }
     w.camera.x = data.x;
     w.camera.y = data.y;
     w.message = { text: 'Save loaded — welcome back to Solmar.', timer: 4 };
@@ -175,6 +192,7 @@ export function createWorld(random) {
     for (const car of w.policeCars) car.despawn = true;
     w.policeCars = [];
     w.footPolice = [];
+    clearRoadblock(w);
     w.camera.x = point.x;
     w.camera.y = point.y;
     restartMission(w);
@@ -183,6 +201,7 @@ export function createWorld(random) {
   /** The title screen's living backdrop: traffic and pedestrians only. */
   function attract(dt) {
     w.time += dt;
+    stepLighting(w.lighting, dt);
     stepTraffic(w, dt);
     stepPeds(w, dt);
     w.effects.step(dt);
@@ -191,6 +210,7 @@ export function createWorld(random) {
     w.camera.y = 950 + Math.cos(w.time * 0.013) * 260;
     w.camera.x = Math.max(VIEW.width / 2, Math.min(WORLD.width - VIEW.width / 2, w.camera.x));
     w.camera.y = Math.max(VIEW.height / 2, Math.min(WORLD.height - VIEW.height / 2, w.camera.y));
+    w.camera.zoom += (CAMERA.zoomTitle - w.camera.zoom) * Math.min(1, CAMERA.zoomLerp * dt);
   }
 
   function topUp(dt) {
@@ -262,7 +282,12 @@ export function createWorld(random) {
   function step(dt, controls) {
     let events = 0;
     w.time += dt;
+    stepLighting(w.lighting, dt);
     if (w.message.timer > 0) w.message.timer -= dt;
+    if (w.missionCard !== null) {
+      w.missionCard.timer -= dt;
+      if (w.missionCard.timer <= 0) w.missionCard = null;
+    }
     const player = w.player;
     player.aimAngle = Math.atan2(controls.aimY - (player.car !== null ? player.car.y : player.y), controls.aimX - (player.car !== null ? player.car.x : player.x));
     stepPlayer(w, controls, dt);
@@ -274,14 +299,19 @@ export function createWorld(random) {
     if (updateMissions(w, dt)) events |= EVENT_MISSION;
     w.effects.step(dt);
     w.marker = stepMarker(w);
-    // Camera: follow the player or their car, smoothly.
+    // Camera: follow the player or their car, smoothly; pull back a little at speed.
     const focusX = player.car !== null ? player.car.x : player.x;
     const focusY = player.car !== null ? player.car.y : player.y;
     const follow = 1 - Math.exp(-6 * dt);
     w.camera.x += (focusX - w.camera.x) * follow;
     w.camera.y += (focusY - w.camera.y) * follow;
-    w.camera.x = Math.max(VIEW.width / 2, Math.min(WORLD.width - VIEW.width / 2, w.camera.x));
-    w.camera.y = Math.max(VIEW.height / 2, Math.min(WORLD.height - VIEW.height / 2, w.camera.y));
+    const speed = player.car !== null ? Math.abs(player.car.speed) : 0;
+    const targetZoom = speed > 350 ? CAMERA.zoomFast : CAMERA.zoom;
+    w.camera.zoom += (targetZoom - w.camera.zoom) * Math.min(1, CAMERA.zoomLerp * dt);
+    const halfW = VIEW.width / (2 * w.camera.zoom);
+    const halfH = VIEW.height / (2 * w.camera.zoom);
+    w.camera.x = Math.max(halfW, Math.min(WORLD.width - halfW, w.camera.x));
+    w.camera.y = Math.max(halfH, Math.min(WORLD.height - halfH, w.camera.y));
     // Engine hum follows the driven car.
     updateEngine(player.car !== null ? Math.min(1, Math.abs(player.car.speed) / player.car.spec.maxSpeed) : 0, player.car !== null);
     topUp(dt);

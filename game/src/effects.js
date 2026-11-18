@@ -1,6 +1,4 @@
-// Short-lived visual effects: particles (smoke, sparks, dust), skid marks left by tyres,
-// screen shake, and floating text ("+$250", "MISSION COMPLETE"). Everything is pooled:
-// no allocation after boot, so a long chase never stutters the frame.
+// effects.js: Short-lived visual effects: particles (smoke, sparks, dust), skid mark
 
 const MAX_PARTICLES = 240;
 const MAX_SKIDS = 400;
@@ -55,6 +53,13 @@ export function createEffects() {
     },
     smoke(x, y) {
       burst(x, y, 2, '#9a9a9a', 40, 5, 0.7);
+    },
+    /** A wreck's fireball: sparks, smoke and a shockwave of shake. */
+    explosion(x, y) {
+      burst(x, y, 22, '#ff9a3c', 320, 6, 0.7);
+      burst(x, y, 12, '#ffd23f', 220, 4, 0.4);
+      burst(x, y, 10, '#5a5a5a', 70, 9, 1.4);
+      shake = Math.min(14, shake + 9);
     },
     sparks(x, y) {
       burst(x, y, 10, '#ffd23f', 260, 3, 0.4);

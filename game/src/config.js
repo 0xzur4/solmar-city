@@ -1,6 +1,4 @@
-// Every tuning number and colour in one place. Solmar is a sun-soaked coastal city:
-// warm sand, teal water, pastel buildings, dark asphalt roads. The world is one fixed
-// rectangle; the camera shows a 1280x720 window of it. Nothing here depends on screen size.
+// config.js: Every tuning number and colour in one place. Solmar is a sun-soaked co
 
 /** The simulation's fixed step, in seconds: 60 updates a second whatever the display's rate. */
 export const STEP = 1 / 60;
@@ -62,16 +60,18 @@ export const CAR_MODELS = {
   van: { length: 76, width: 32, accel: 300, brake: 600, reverse: 170, maxSpeed: 380, grip: 0.93, turn: 2.1, color: '#7a8ba0' },
   sports: { length: 62, width: 30, accel: 620, brake: 800, reverse: 230, maxSpeed: 640, grip: 0.86, turn: 3.1, color: '#2fb3a6' },
   pickup: { length: 70, width: 32, accel: 380, brake: 650, reverse: 190, maxSpeed: 430, grip: 0.91, turn: 2.4, color: '#4f7ec9' },
+  muscle: { length: 66, width: 32, accel: 560, brake: 750, reverse: 210, maxSpeed: 580, grip: 0.88, turn: 2.8, color: '#e07a2e' },
+  truck: { length: 92, width: 34, accel: 240, brake: 550, reverse: 150, maxSpeed: 340, grip: 0.95, turn: 1.8, color: '#8a6d4b' },
   police: { length: 66, width: 30, accel: 560, brake: 800, reverse: 220, maxSpeed: 600, grip: 0.88, turn: 3.0, color: '#20242e' },
 };
 
 /** Traffic and pedestrians. */
 export const TRAFFIC = {
-  cars: 22,
-  parked: 16,
+  cars: 30,
+  parked: 24,
   cruiseSpeed: 175,
   cruiseJitter: 45,
-  peds: 42,
+  peds: 64,
   pedSpeed: 55,
   pedFleeSpeed: 150,
 };
@@ -81,6 +81,8 @@ export const WANTED = {
   starAt: [15, 35, 55, 75, 90],
   decay: 2.2,
   decayDelay: 5,
+  /** Hiding near the safehouse with no police close clears heat this much faster. */
+  hideMultiplier: 3,
   stealCar: 25,
   hitPed: 30,
   killPed: 45,
@@ -91,6 +93,10 @@ export const WANTED = {
   policeCars: [0, 1, 2, 3, 4, 5],
   /** Foot police per star level. */
   footPolice: [0, 0, 1, 2, 3, 4],
+  /** Helicopter from this many stars up. */
+  heliAtStars: 4,
+  /** Roadblock from this many stars up. */
+  roadblockAtStars: 3,
   spawnRange: 700,
   despawnRange: 1400,
 };
@@ -101,6 +107,8 @@ export const MONEY = {
   fareMin: 40,
   fareMax: 90,
   cashPickup: 50,
+  packageReward: 150,
+  repairCost: 150,
   bustedLoss: 0.15,
   wastedLoss: 0.1,
   healthPack: 40,
@@ -112,6 +120,26 @@ export const PICKUPS = {
   health: 3,
   ammo: 3,
   farePeds: 4,
+  packages: 10,
+};
+
+/** Day cycle: one full day is this many seconds of play; shots can fix the clock. */
+export const LIGHTING = {
+  cycleSeconds: 300,
+  /** Phase bounds as fractions of the cycle: day, golden hour, night, dawn. */
+  dayEnd: 0.55,
+  goldenEnd: 0.7,
+  nightEnd: 0.92,
+  nightDarkness: 0.42,
+  goldenWarmth: 0.16,
+};
+
+/** Camera zoom: closer than 1:1 so the player and cars read at a glance. */
+export const CAMERA = {
+  zoom: 1.55,
+  zoomFast: 1.3,
+  zoomTitle: 1.25,
+  zoomLerp: 2,
 };
 
 /** Where the save lives (this browser only). */
@@ -136,6 +164,20 @@ export const PALETTE = {
   tree: '#4e7d46',
   treeTrunk: '#6b4a2f',
   lamp: '#3a3f4a',
+  lampGlow: '#ffd27a',
+  plaza: '#9a938a',
+  plazaEdge: '#7d766e',
+  fountain: '#3fa8c9',
+  pierWood: '#8a6d4b',
+  boatHull: ['#e8e0c8', '#c94f43', '#4f7ec9', '#2fb3a6'],
+  umbrella: ['#e4572e', '#f2c230', '#4f7ec9', '#c94f43', '#2fb3a6'],
+  bench: '#7a5a3a',
+  hydrant: '#d64545',
+  awning: ['#e4572e', '#2fb3a6', '#f2c230', '#c94f43'],
+  neon: ['#ff5ea8', '#37e0c8', '#ffd23f', '#7ab8ff', '#ff7a3c'],
+  windowLit: '#ffe9a8',
+  headlight: '#fff2c0',
+  vignette: 'rgba(200, 20, 20, 0.35)',
   player: '#f2f0e6',
   playerShirt: '#e4572e',
   pedShirt: ['#e4572e', '#4f7ec9', '#f2c230', '#7fb069', '#c94f43', '#8e6fc9', '#2fb3a6', '#e8e0c8'],

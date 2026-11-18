@@ -4,10 +4,11 @@
 // screenshots/ from beside this file to /output and writes /output/dossier.json, the summary the
 // judge reads, with the vendored make.fun library. The game itself is Solmar, a 2D top-down
 // open-world crime game: explore a sun-soaked coastal city on foot and by car, steal cars, dodge
-// the Solmar PD's wanted stars, and run six story missions for the fixer Mara Voss, with traffic,
-// pedestrians, combat, money, saves and a living city behind the title screen. The screenshots in
+// the Solmar PD's wanted stars, roadblocks and police helicopter, and run eleven story missions
+// for the fixer Mara Voss, with traffic, pedestrians, combat, money, side jobs, saves and a living
+// city that runs from day through golden hour to night behind the title screen. The screenshots in
 // screenshots/ are real renders of the game's own code, staged by game/src/shots.js; the first by
-// name is the cover, a three-star police chase.
+// name is the cover, a five-star night chase through downtown.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:

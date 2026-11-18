@@ -1,6 +1,4 @@
-// Save and load: one JSON blob in localStorage. It keeps the money, the mission progress,
-// the player's position and health, and the run's stats — nothing else. A save that fails
-// to parse, or that holds numbers that are not numbers, is ignored rather than crashing.
+// save.js: Save and load: one JSON blob in localStorage. It keeps the money, the 
 import { MISSIONS } from './missions.js';
 import { SAVE_KEY } from './config.js';
 
@@ -21,6 +19,7 @@ export function saveGame(w) {
     earned: w.stats.earned,
     faresDone: w.stats.faresDone,
     carsStolen: w.stats.carsStolen,
+    packagesTaken: w.packages.filter((pack) => pack.taken).map((pack) => pack.id),
     savedAt: Date.now(),
   };
   try {

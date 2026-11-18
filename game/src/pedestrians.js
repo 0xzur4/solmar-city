@@ -1,7 +1,4 @@
-// Pedestrians: they stroll the sidewalks between random waypoints, scatter when a gun goes
-// off or a car comes at them, and a few of them wait with a fare flag — drive one to its
-// destination and it pays. Peds also witness crimes: steal a car in front of one and the
-// wanted level climbs.
+// pedestrians.js: Pedestrians: they stroll the sidewalks between random waypoints, scatt
 import { CITY, TRAFFIC } from './config.js';
 import { randomSidewalkPoint } from './city.js';
 import { pick, range } from './random.js';

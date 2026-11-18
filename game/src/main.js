@@ -1,10 +1,4 @@
-// Boot and the one loop: input is read every frame, the world advances in fixed 1/60 s steps
-// (several in a slow frame, none in a fast one), and the renderer paints what is there. The game
-// moves between six screens: title, play, paused, busted, wasted and complete.
-//
-// ?seed=N fixes the city's layout. ?shot=chase|foot|drive|mission (with &seed=N) stages that
-// scene instead of running the loop, paints it twice and sets window.__shotReady for a
-// screenshot. window.__solmar exposes the world for automated playtests.
+// main.js: Boot and the one loop: input is read every frame, the world advances i
 import { MONEY, STEP, VIEW } from './config.js';
 import { createRandom } from './random.js';
 import { createWorld, EVENT_BUSTED, EVENT_MISSION, EVENT_WASTED } from './world.js';
@@ -37,9 +31,10 @@ function mouseToWorld(input, camera) {
   const viewY = (window.innerHeight - VIEW.height * scale) / 2;
   const viewMouseX = (mouse.x - viewX) / scale;
   const viewMouseY = (mouse.y - viewY) / scale;
+  const zoom = camera.zoom ?? 1;
   return {
-    x: camera.x - VIEW.width / 2 + viewMouseX,
-    y: camera.y - VIEW.height / 2 + viewMouseY,
+    x: camera.x - VIEW.width / (2 * zoom) + viewMouseX / zoom,
+    y: camera.y - VIEW.height / (2 * zoom) + viewMouseY / zoom,
   };
 }
 

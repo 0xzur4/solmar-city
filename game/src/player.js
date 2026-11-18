@@ -1,17 +1,17 @@
-// The player on foot: walk and run, enter and exit cars, punch and shoot. Driving itself
-// lives in vehicles.js; this file only moves the person and wires the actions to the world.
-import { PLAYER, PISTOL, WANTED } from './config.js';
+// player.js: The player on foot: walk and run, enter and exit cars, punch and shoot
+import { PLAYER, PISTOL, WANTED, MONEY } from './config.js';
 import { clampToLand, resolveBuildingCollision } from './city.js';
 import { nearestCar, stepPlayerCar } from './vehicles.js';
 import { fireBullet, punch } from './combat.js';
 import { addHeat } from './police.js';
 import { nearestFarePed } from './pedestrians.js';
+import { collectPackages } from './sidejobs.js';
 import { playPickup } from './audio.js';
 
 export const ACTION_ENTER = 4;
 export const ACTION_PUNCH = 8;
 export const ACTION_SHOOT = 32;
-export const ACTION_HANDBRAKE = 64;
+export const ACTION_REPAIR = 64;
 
 function stepOnFoot(w, controls, dt) {
   const player = w.player;
@@ -161,6 +161,20 @@ export function stepPlayer(w, controls, dt) {
   } else if (player.car !== null) {
     stepPlayerCar(w, player.car, controls, dt);
     if (actions & ACTION_ENTER) exitCar(w);
+    // Garage repair: at Mara's Garage, G fixes the car up for $150.
+    if (actions & ACTION_REPAIR && player.car.health < 100) {
+      const garage = w.city.garage;
+      if (Math.hypot(garage.x - player.car.x, garage.y - player.car.y) < 140) {
+        if (player.money >= MONEY.repairCost) {
+          player.money -= MONEY.repairCost;
+          player.car.health = 100;
+          w.effects.addFloater(player.car.x, player.car.y - 30, 'Repaired', '#7fd08a');
+          playPickup();
+        } else {
+          w.message = { text: `Repair costs $${MONEY.repairCost} — you are short.`, timer: 2 };
+        }
+      }
+    }
     if (actions & ACTION_SHOOT && player.shootTimer <= 0 && player.ammo > 0) {
       // Drive-by: shoot from the car window toward the mouse.
       player.shootTimer = PISTOL.cooldown;
@@ -184,4 +198,6 @@ export function stepPlayer(w, controls, dt) {
       w.fare = null;
     }
   }
+  // Hidden packages: walk over one to pocket $150.
+  collectPackages(w);
 }

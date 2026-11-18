@@ -1,6 +1,4 @@
-// Keyboard and pointer input. Held keys give a movement vector; one-shot presses (confirm,
-// pause, enter a car, punch, mute) are queued as bit flags and taken once by the loop, so a
-// press between two frames is never lost and never counted twice. The mouse aims the pistol.
+// input.js: Keyboard and pointer input. Held keys give a movement vector; one-shot
 
 export const ACTION_CONFIRM = 1;
 export const ACTION_PAUSE = 2;
@@ -8,6 +6,7 @@ export const ACTION_ENTER = 4;
 export const ACTION_PUNCH = 8;
 export const ACTION_MUTE = 16;
 export const ACTION_SHOOT = 32;
+export const ACTION_REPAIR = 64;
 
 const UP = new Set(['ArrowUp', 'KeyW']);
 const DOWN = new Set(['ArrowDown', 'KeyS']);
@@ -17,6 +16,7 @@ const CONFIRM = new Set(['Space', 'Enter']);
 const PAUSE = new Set(['KeyP', 'Escape']);
 const ENTER = new Set(['KeyE']);
 const PUNCH = new Set(['KeyF']);
+const REPAIR = new Set(['KeyG']);
 const MUTE = new Set(['KeyM']);
 const RUN = new Set(['ShiftLeft', 'ShiftRight']);
 
@@ -52,6 +52,8 @@ export function createInput(canvas) {
       if (!event.repeat) actions |= ACTION_ENTER;
     } else if (press(event, PUNCH)) {
       if (!event.repeat) actions |= ACTION_PUNCH;
+    } else if (press(event, REPAIR)) {
+      if (!event.repeat) actions |= ACTION_REPAIR;
     } else if (press(event, MUTE)) {
       if (!event.repeat) actions |= ACTION_MUTE;
     } else return;
